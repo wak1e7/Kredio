@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { CustomerCampaignStatus } from "@prisma/client";
+
+type CustomerCampaignStatus = "OPEN" | "PARTIAL" | "PAID";
 
 export type CustomerStatementProduct = {
   productKey: string;

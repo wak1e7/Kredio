@@ -2,8 +2,9 @@
 import { prisma } from "@/lib/prisma";
 import { validateTrustedOrigin } from "@/lib/security/http";
 import { NextRequest, NextResponse } from "next/server";
-import { CustomerStatus } from "@prisma/client";
 import { z } from "zod";
+
+type CustomerStatus = "ACTIVE" | "INACTIVE";
 
 const createCustomerSchema = z.object({
   businessId: z.string().uuid().optional(),

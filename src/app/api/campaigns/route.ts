@@ -1,9 +1,10 @@
 ﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
-import { CampaignStatus } from "@prisma/client";
 import { validateTrustedOrigin } from "@/lib/security/http";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+type CampaignStatus = "OPEN" | "CLOSED";
 
 const createCampaignSchema = z.object({
   businessId: z.string().uuid().optional(),

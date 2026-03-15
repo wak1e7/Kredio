@@ -2,8 +2,9 @@ import { getAuthenticatedUser } from "@/lib/auth/guards";
 import { getCustomerStatementData } from "@/lib/customer-statement";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Panel } from "@/components/ui/panel";
-import { CustomerCampaignStatus } from "@prisma/client";
 import Link from "next/link";
+
+type CustomerCampaignStatus = "OPEN" | "PARTIAL" | "PAID";
 import { notFound, redirect } from "next/navigation";
 
 function formatCurrency(value: number) {

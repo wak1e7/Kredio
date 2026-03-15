@@ -1,9 +1,10 @@
 ﻿import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
-import { CampaignStatus } from "@prisma/client";
 import { validateTrustedOrigin } from "@/lib/security/http";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+const CAMPAIGN_STATUSES = ["OPEN", "CLOSED"] as const;
 
 const updateCampaignSchema = z
   .object({
@@ -12,7 +13,7 @@ const updateCampaignSchema = z
     year: z.number().int().min(2024).max(2100).optional(),
     startDate: z.string().datetime().optional(),
     endDate: z.union([z.string().datetime(), z.literal(""), z.null()]).optional(),
-    status: z.nativeEnum(CampaignStatus).optional(),
+    status: z.enum(CAMPAIGN_STATUSES).optional(),
   })
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "Debes enviar al menos un campo para actualizar.",
@@ -65,7 +66,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           error:
-            payload.status === CampaignStatus.CLOSED
+            payload.status === "CLOSED"
               ? "La campaña ya está cerrada."
               : "La campaña ya está activa.",
         },
@@ -82,11 +83,11 @@ export async function PATCH(
         startDate: payload.startDate ? new Date(payload.startDate) : undefined,
         status: payload.status,
         endDate:
-          payload.status === CampaignStatus.CLOSED
+          payload.status === "CLOSED"
             ? payload.endDate && payload.endDate !== ""
               ? new Date(payload.endDate)
               : campaign.endDate ?? new Date()
-            : payload.status === CampaignStatus.OPEN
+            : payload.status === "OPEN"
               ? null
               : payload.endDate === undefined
                 ? undefined

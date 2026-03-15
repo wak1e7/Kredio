@@ -1,9 +1,10 @@
 import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
-import { CustomerStatus } from "@prisma/client";
 import { validateTrustedOrigin } from "@/lib/security/http";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+const CUSTOMER_STATUSES = ["ACTIVE", "INACTIVE"] as const;
 
 const updateCustomerSchema = z
   .object({
@@ -13,7 +14,7 @@ const updateCustomerSchema = z
     address: z.union([z.string(), z.null()]).optional(),
     email: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
     notes: z.union([z.string(), z.null()]).optional(),
-    status: z.nativeEnum(CustomerStatus).optional(),
+    status: z.enum(CUSTOMER_STATUSES).optional(),
   })
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "Debes enviar al menos un campo para actualizar.",

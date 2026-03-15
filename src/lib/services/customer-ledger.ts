@@ -1,8 +1,9 @@
-import { CustomerCampaignStatus, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { allocatePaymentToOldestDebts } from "./financial";
 
 type TransactionClient = Prisma.TransactionClient;
+type CustomerCampaignStatus = "OPEN" | "PARTIAL" | "PAID";
 
 type CampaignLedgerEntry = {
   campaignId: string;
@@ -32,9 +33,9 @@ function sortByCampaignPeriod(entries: CampaignLedgerEntry[]) {
 }
 
 function resolveBalanceStatus(totalPaid: number, balance: number): CustomerCampaignStatus {
-  if (balance <= 0) return CustomerCampaignStatus.PAID;
-  if (totalPaid > 0) return CustomerCampaignStatus.PARTIAL;
-  return CustomerCampaignStatus.OPEN;
+  if (balance <= 0) return "PAID";
+  if (totalPaid > 0) return "PARTIAL";
+  return "OPEN";
 }
 
 export async function syncCustomerLedger(
