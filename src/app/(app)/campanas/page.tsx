@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeading } from "@/components/ui/page-heading";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Panel } from "@/components/ui/panel";
 import { Plus } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -397,31 +398,12 @@ export default function CampanasPage() {
                 ))}
               </tbody>
             </table>
-            {totalPages > 1 ? (
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <p className="text-sm text-[var(--foreground-muted)]">
-                  Página {currentPage} de {totalPages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                    disabled={currentPage === 1}
-                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                    disabled={currentPage === totalPages}
-                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Siguiente
-                  </button>
-                </div>
-              </div>
-            ) : null}
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevious={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              onNext={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            />
           </div>
         )}
       </Panel>
