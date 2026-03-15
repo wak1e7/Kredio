@@ -1,4 +1,4 @@
-import { getPublicEnv, getServerEnv } from "@/lib/env";
+import { getPublicEnv } from "@/lib/env";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -20,26 +20,6 @@ export async function createServerSupabaseClient() {
           // This can happen in Server Components that don't allow setting cookies.
         }
       },
-    },
-  });
-}
-
-export async function createServiceRoleSupabaseClient() {
-  const { NEXT_PUBLIC_SUPABASE_URL } = getPublicEnv();
-  const { SUPABASE_SERVICE_ROLE_KEY } = getServerEnv();
-
-  if (!SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY no esta configurada.");
-  }
-
-  const cookieStore = await cookies();
-
-  return createServerClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll() {},
     },
   });
 }

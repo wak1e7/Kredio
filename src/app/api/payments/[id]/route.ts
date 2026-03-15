@@ -1,6 +1,7 @@
 import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { syncCustomerLedger } from "@/lib/services/customer-ledger";
+import { validateTrustedOrigin } from "@/lib/security/http";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -22,10 +23,15 @@ export async function PATCH(
       return NextResponse.json({ error: "No autenticado." }, { status: 401 });
     }
 
+    const originError = validateTrustedOrigin(request);
+    if (originError) {
+      return originError;
+    }
+
     const ownedBusiness = await getOwnedBusiness(user.id);
     if (!ownedBusiness) {
       return NextResponse.json(
-        { error: "No se encontro un negocio para este usuario. Ejecuta /api/setup/dev-seed." },
+      { error: "No se encontró un negocio para este usuario." },
         { status: 404 },
       );
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { ListFilters } from "@/components/ui/list-filters";
 import { PageHeading } from "@/components/ui/page-heading";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Panel } from "@/components/ui/panel";
@@ -37,6 +38,7 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 2,
 });
 const EXPENSES_PER_PAGE = 10;
+const ENYE = String.fromCharCode(241);
 
 export default function GastosPage() {
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
@@ -62,37 +64,26 @@ export default function GastosPage() {
     setNotes("");
   }
 
-  const loadExpenses = useCallback(async (retrySeed = true) => {
+  const loadExpenses = useCallback(async () => {
     setError(null);
     setIsLoading(true);
 
-    let hasRetriedSeed = false;
+    const response = await fetch("/api/expenses", { cache: "no-store" });
+    const json = (await response.json()) as ExpensesResponse;
 
-    while (true) {
-      const response = await fetch("/api/expenses", { cache: "no-store" });
-      const json = (await response.json()) as ExpensesResponse;
-
-      if (!response.ok) {
-        if (response.status === 404 && retrySeed && !hasRetriedSeed) {
-          hasRetriedSeed = true;
-          await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
-          continue;
-        }
-
-        setError(json.error ?? "No se pudo cargar gastos.");
-        setExpenses([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const nextCampaignOptions = json.campaignOptions ?? [];
-      setExpenses(json.data ?? []);
-      setCurrentPage(1);
-      setCampaignOptions(nextCampaignOptions);
-      setCampaignId((current) => current || nextCampaignOptions[0]?.id || "");
+    if (!response.ok) {
+      setError(json.error ?? "No se pudo cargar gastos.");
+      setExpenses([]);
       setIsLoading(false);
       return;
     }
+
+    const nextCampaignOptions = json.campaignOptions ?? [];
+    setExpenses(json.data ?? []);
+    setCurrentPage(1);
+    setCampaignOptions(nextCampaignOptions);
+    setCampaignId((current) => current || nextCampaignOptions[0]?.id || "");
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -140,7 +131,7 @@ export default function GastosPage() {
     resetForm();
     setSuccessMessage(isEditing ? "Gasto actualizado correctamente." : "Gasto registrado correctamente.");
     setShowCreateForm(false);
-    await loadExpenses(false);
+    await loadExpenses();
   }
 
   const filteredExpenses = useMemo(() => {
@@ -263,24 +254,23 @@ export default function GastosPage() {
       ) : null}
 
       <Panel delay={260}>
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="md:col-span-2" />
+        <ListFilters>
           <select
-            className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
+            className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
             value={campaignFilter}
             onChange={(event) => {
               setCampaignFilter(event.target.value);
               setCurrentPage(1);
             }}
           >
-            <option value="all">Todas las campañas</option>
+            <option value="all">{`Todas las campa${ENYE}as`}</option>
             {campaignOptions.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}
               </option>
             ))}
           </select>
-        </div>
+        </ListFilters>
       </Panel>
 
       <Panel delay={300}>

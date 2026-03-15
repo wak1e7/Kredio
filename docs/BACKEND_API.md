@@ -18,7 +18,7 @@ Respuesta:
 ```
 
 ## 2) Seed de desarrollo
-`POST /api/setup/dev-seed`
+Ruta eliminada para producción.
 
 Body opcional (requiere login):
 ```json

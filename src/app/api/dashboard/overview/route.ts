@@ -2,26 +2,9 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-const monthLabels = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
-];
-
 type TrendPoint = {
   label: string;
   sold: number;
-  collected: number;
-  debt: number;
 };
 
 function roundCurrency(value: number) {
@@ -39,7 +22,7 @@ async function resolveBusinessId(userId: string, requestedBusinessId: string | n
 
   const ownedBusiness = await getOwnedBusiness(userId);
   if (!ownedBusiness) {
-    return { error: "No se encontro un negocio para este usuario. Ejecuta /api/setup/dev-seed.", status: 404 as const };
+    return { error: "No se encontró un negocio para este usuario.", status: 404 as const };
   }
 
   return { businessId: ownedBusiness.id };
@@ -115,11 +98,9 @@ export async function GET(request: NextRequest) {
             soldYear: 0,
             customersWithDebt: 0,
             totalCustomers: 0,
-            activeCampaigns: 0,
-            campaignsCount: 0,
           },
-          campaignFlow: [],
-          collectionsByMonth: monthLabels.map((label) => ({ month: label, total: 0 })),
+          trendMode: "campaigns",
+          trendSeries: [],
           latestPayments: [],
           topDebtors: [],
         },
@@ -265,23 +246,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const campaignFlow = campaigns.map((campaign) => {
+    const campaignSoldTotals = campaigns.map((campaign) => {
       const sold = campaign.customerBalances.reduce(
         (acc, item) => acc + Number(item.totalPurchased.toString()),
         0,
       );
-      const collected = campaign.customerBalances.reduce(
-        (acc, item) => acc + Number(item.totalPaid.toString()),
-        0,
-      );
-      const debt = campaign.customerBalances.reduce((acc, item) => acc + Number(item.balance.toString()), 0);
 
       return {
         campaignId: campaign.id,
         campaign: campaign.name,
         sold: roundCurrency(sold),
-        collected: roundCurrency(collected),
-        debt: roundCurrency(debt),
       };
     });
 
@@ -313,31 +287,14 @@ export async function GET(request: NextRequest) {
         .map((day) => ({
           label: String(day).padStart(2, "0"),
           sold: soldByDay.get(day) ?? 0,
-          collected: 0,
-          debt: 0,
         }));
     } else {
       trendMode = "campaigns";
-      trendSeries = campaignFlow.map((campaign) => ({
+      trendSeries = campaignSoldTotals.map((campaign) => ({
         label: campaign.campaign,
         sold: campaign.sold,
-        collected: 0,
-        debt: 0,
       }));
     }
-
-    const monthTotals = new Array<number>(12).fill(0);
-    for (const application of paymentApplications) {
-      const monthIndex = application.payment.paymentDate.getMonth();
-      monthTotals[monthIndex] = roundCurrency(
-        monthTotals[monthIndex] + Number(application.appliedAmount.toString()),
-      );
-    }
-
-    const collectionsByMonth = monthLabels.map((label, index) => ({
-      month: label,
-      total: monthTotals[index],
-    }));
 
     const latestPayments = latestApplicationsRaw.map((application) => ({
       paymentId: application.paymentId,
@@ -372,13 +329,9 @@ export async function GET(request: NextRequest) {
           soldYear: roundCurrency(soldYear),
           customersWithDebt: debtorMap.size,
           totalCustomers: totalCustomersSet.size,
-          activeCampaigns: campaigns.filter((campaign) => campaign.status === "OPEN").length,
-          campaignsCount: campaigns.length,
         },
-        campaignFlow,
         trendMode,
         trendSeries,
-        collectionsByMonth,
         latestPayments,
         topDebtors,
       },
@@ -394,4 +347,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 

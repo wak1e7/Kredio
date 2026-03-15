@@ -1,9 +1,10 @@
 "use client";
 
+import { ListFilters } from "@/components/ui/list-filters";
 import { PageHeading } from "@/components/ui/page-heading";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Panel } from "@/components/ui/panel";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type CustomerOption = { id: string; fullName: string };
@@ -40,6 +41,7 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
 
 const CATEGORY_OPTIONS = ["Sokso", "Footloose", "Leonisa"] as const;
 const PURCHASES_PER_PAGE = 10;
+const ENYE = String.fromCharCode(241);
 
 export default function ComprasPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -80,59 +82,48 @@ export default function ComprasPage() {
     setSalePrice("");
   }
 
-  const loadData = useCallback(async (retrySeed = true) => {
+  const loadData = useCallback(async () => {
     setError(null);
     setIsLoading(true);
 
-    let hasRetriedSeed = false;
+    const [customersRes, campaignsRes, campaignFilterRes, purchasesRes] = await Promise.all([
+      fetch("/api/customers?status=ACTIVE", { cache: "no-store" }),
+      fetch("/api/campaigns?status=OPEN", { cache: "no-store" }),
+      fetch("/api/campaigns", { cache: "no-store" }),
+      fetch("/api/purchases", { cache: "no-store" }),
+    ]);
 
-    while (true) {
-      const [customersRes, campaignsRes, campaignFilterRes, purchasesRes] = await Promise.all([
-        fetch("/api/customers?status=ACTIVE", { cache: "no-store" }),
-        fetch("/api/campaigns?status=OPEN", { cache: "no-store" }),
-        fetch("/api/campaigns", { cache: "no-store" }),
-        fetch("/api/purchases", { cache: "no-store" }),
-      ]);
+    const customersJson = (await customersRes.json()) as { data?: Array<{ id: string; fullName: string }>; error?: string };
+    const campaignsJson = (await campaignsRes.json()) as { data?: Array<{ id: string; name: string }>; error?: string };
+    const campaignFilterJson = (await campaignFilterRes.json()) as { data?: Array<{ id: string; name: string }>; error?: string };
+    const purchasesJson = (await purchasesRes.json()) as { data?: PurchaseRow[]; error?: string };
 
-      if ((customersRes.status === 404 || campaignsRes.status === 404 || campaignFilterRes.status === 404 || purchasesRes.status === 404) && retrySeed && !hasRetriedSeed) {
-        hasRetriedSeed = true;
-        await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
-        continue;
-      }
-
-      const customersJson = (await customersRes.json()) as { data?: Array<{ id: string; fullName: string }>; error?: string };
-      const campaignsJson = (await campaignsRes.json()) as { data?: Array<{ id: string; name: string }>; error?: string };
-      const campaignFilterJson = (await campaignFilterRes.json()) as { data?: Array<{ id: string; name: string }>; error?: string };
-      const purchasesJson = (await purchasesRes.json()) as { data?: PurchaseRow[]; error?: string };
-
-      if (!customersRes.ok || !campaignsRes.ok || !campaignFilterRes.ok || !purchasesRes.ok) {
-        setError(customersJson.error ?? campaignsJson.error ?? campaignFilterJson.error ?? purchasesJson.error ?? "No se pudo cargar compras.");
-        setIsLoading(false);
-        return;
-      }
-
-      const customerData = customersJson.data ?? [];
-      const campaignData = campaignsJson.data ?? [];
-      const filterCampaignData = campaignFilterJson.data ?? [];
-      const purchaseData = purchasesJson.data ?? [];
-
-      setCustomers(customerData);
-      setCampaigns(campaignData);
-      setCampaignFilterOptions(filterCampaignData);
-      setPurchases(purchaseData);
-      setCurrentPage(1);
-
-      if (!customerId && customerData[0]) {
-        setCustomerId(customerData[0].id);
-      }
-
-      if (!campaignId && campaignData[0]) {
-        setCampaignId(campaignData[0].id);
-      }
-
+    if (!customersRes.ok || !campaignsRes.ok || !campaignFilterRes.ok || !purchasesRes.ok) {
+      setError(customersJson.error ?? campaignsJson.error ?? campaignFilterJson.error ?? purchasesJson.error ?? "No se pudo cargar compras.");
       setIsLoading(false);
       return;
     }
+
+    const customerData = customersJson.data ?? [];
+    const campaignData = campaignsJson.data ?? [];
+    const filterCampaignData = campaignFilterJson.data ?? [];
+    const purchaseData = purchasesJson.data ?? [];
+
+    setCustomers(customerData);
+    setCampaigns(campaignData);
+    setCampaignFilterOptions(filterCampaignData);
+    setPurchases(purchaseData);
+    setCurrentPage(1);
+
+    if (!customerId && customerData[0]) {
+      setCustomerId(customerData[0].id);
+    }
+
+    if (!campaignId && campaignData[0]) {
+      setCampaignId(campaignData[0].id);
+    }
+
+    setIsLoading(false);
   }, [campaignId, customerId]);
 
   useEffect(() => {
@@ -205,7 +196,7 @@ export default function ComprasPage() {
     resetProductForm();
     setSuccessMessage(isEditing ? "Compra actualizada correctamente." : "Compra registrada correctamente.");
     setShowCreateForm(false);
-    await loadData(false);
+    await loadData();
   }
 
   const filteredPurchases = useMemo(() => {
@@ -379,38 +370,33 @@ export default function ComprasPage() {
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p> : null}
 
       <Panel delay={280}>
-        <div className="grid gap-3 md:grid-cols-3">
-          <label className="md:col-span-2">
-            <span className="sr-only">Buscar compra</span>
-            <span className="flex items-center gap-2 rounded-xl border bg-[var(--surface)] px-3 py-2">
-              <Search className="h-4 w-4 text-[var(--foreground-muted)]" />
-              <input
-                placeholder="Buscar por cliente o campaña..."
-                className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--foreground-muted)]"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </span>
-          </label>
+        <ListFilters
+          search={{
+            label: "Buscar compra",
+            placeholder: `Buscar por cliente o campa${ENYE}a...`,
+            value: query,
+            onChange: (value) => {
+              setQuery(value);
+              setCurrentPage(1);
+            },
+          }}
+        >
           <select
-            className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
+            className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
             value={campaignFilter}
             onChange={(event) => {
               setCampaignFilter(event.target.value);
               setCurrentPage(1);
             }}
           >
-            <option value="all">Todas las campañas</option>
+            <option value="all">{`Todas las campa${ENYE}as`}</option>
             {campaignFilterOptions.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}
               </option>
             ))}
           </select>
-        </div>
+        </ListFilters>
       </Panel>
 
       <Panel delay={310}>

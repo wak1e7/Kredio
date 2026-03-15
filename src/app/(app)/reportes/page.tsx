@@ -86,60 +86,49 @@ export default function ReportesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadReports = useCallback(
-    async (retrySeed = true, year = selectedYear, campaignId = selectedCampaignId) => {
+    async (year = selectedYear, campaignId = selectedCampaignId) => {
       setError(null);
       setIsLoading(true);
 
-      let hasRetriedSeed = false;
+      const params = new URLSearchParams();
+      params.set("year", String(year));
+      if (campaignId && campaignId !== "ALL") {
+        params.set("campaignId", campaignId);
+      }
 
-      while (true) {
-        const params = new URLSearchParams();
-        params.set("year", String(year));
-        if (campaignId && campaignId !== "ALL") {
-          params.set("campaignId", campaignId);
-        }
+      const response = await fetch(`/api/reports/overview?${params.toString()}`, { cache: "no-store" });
+      const json = (await response.json()) as ReportResponse;
 
-        const response = await fetch(`/api/reports/overview?${params.toString()}`, { cache: "no-store" });
-        const json = (await response.json()) as ReportResponse;
-
-        if (!response.ok) {
-          if (response.status === 404 && retrySeed && !hasRetriedSeed) {
-            hasRetriedSeed = true;
-            await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
-            continue;
-          }
-
-          setError(json.error ?? "No se pudo cargar reportes.");
-          setSummary(emptySummary);
-          setExpensesHistory([]);
-          setCampaignBreakdown([]);
-          setCategoryMargins([]);
-          setTopBuyers([]);
-          setTopDebtors([]);
-          setIsLoading(false);
-          return;
-        }
-
-        setAvailableYears(json.data?.availableYears ?? []);
-        setSelectedYear(json.data?.selectedYear ?? year);
-        setCampaignOptions(json.data?.campaignOptions ?? []);
-        setSelectedCampaignId(json.data?.selectedCampaignId ?? "ALL");
-        setSummary(json.data?.annualSummary ?? emptySummary);
-        setExpensesHistory(json.data?.expensesHistory ?? []);
-        setCampaignBreakdown(json.data?.campaignBreakdown ?? []);
-        setCategoryMargins(json.data?.categoryMargins ?? []);
-        setTopBuyers(json.data?.topBuyers ?? []);
-        setTopDebtors(json.data?.topDebtors ?? []);
+      if (!response.ok) {
+        setError(json.error ?? "No se pudo cargar reportes.");
+        setSummary(emptySummary);
+        setExpensesHistory([]);
+        setCampaignBreakdown([]);
+        setCategoryMargins([]);
+        setTopBuyers([]);
+        setTopDebtors([]);
         setIsLoading(false);
         return;
       }
+
+      setAvailableYears(json.data?.availableYears ?? []);
+      setSelectedYear(json.data?.selectedYear ?? year);
+      setCampaignOptions(json.data?.campaignOptions ?? []);
+      setSelectedCampaignId(json.data?.selectedCampaignId ?? "ALL");
+      setSummary(json.data?.annualSummary ?? emptySummary);
+      setExpensesHistory(json.data?.expensesHistory ?? []);
+      setCampaignBreakdown(json.data?.campaignBreakdown ?? []);
+      setCategoryMargins(json.data?.categoryMargins ?? []);
+      setTopBuyers(json.data?.topBuyers ?? []);
+      setTopDebtors(json.data?.topDebtors ?? []);
+      setIsLoading(false);
     },
     [selectedCampaignId, selectedYear],
   );
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      loadReports(true, selectedYear, selectedCampaignId);
+      loadReports(selectedYear, selectedCampaignId);
     }, 0);
 
     return () => {

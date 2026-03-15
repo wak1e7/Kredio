@@ -1,5 +1,6 @@
 ﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
+import { validateTrustedOrigin } from "@/lib/security/http";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -22,7 +23,7 @@ async function resolveBusinessId(userId: string, requestedBusinessId: string | n
 
   const ownedBusiness = await getOwnedBusiness(userId);
   if (!ownedBusiness) {
-    return { error: "No se encontro un negocio para este usuario. Ejecuta /api/setup/dev-seed.", status: 404 as const };
+    return { error: "No se encontró un negocio para este usuario.", status: 404 as const };
   }
 
   return { businessId: ownedBusiness.id };
@@ -33,6 +34,11 @@ export async function GET(request: NextRequest) {
     const user = await getAuthenticatedUser();
     if (!user) {
       return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+    }
+
+    const originError = validateTrustedOrigin(request);
+    if (originError) {
+      return originError;
     }
 
     const { searchParams } = new URL(request.url);
@@ -177,4 +183,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 

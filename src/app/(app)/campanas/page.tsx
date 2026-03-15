@@ -84,33 +84,22 @@ export default function CampanasPage() {
     return params;
   }, [filter]);
 
-  const loadCampaigns = useCallback(async (params: URLSearchParams, retrySeed = true) => {
+  const loadCampaigns = useCallback(async (params: URLSearchParams) => {
     setError(null);
     setIsLoading(true);
 
-    let hasRetriedSeed = false;
+    const response = await fetch(`/api/campaigns?${params.toString()}`, { cache: "no-store" });
+    const json = (await response.json()) as { data?: CampaignRow[]; error?: string };
 
-    while (true) {
-      const response = await fetch(`/api/campaigns?${params.toString()}`, { cache: "no-store" });
-      const json = (await response.json()) as { data?: CampaignRow[]; error?: string };
-
-      if (!response.ok) {
-        if (response.status === 404 && retrySeed && !hasRetriedSeed) {
-          hasRetriedSeed = true;
-          await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
-          continue;
-        }
-
-        setError(json.error ?? "No se pudieron cargar las campañas.");
-        setIsLoading(false);
-        return;
-      }
-
-      setCampaigns(json.data ?? []);
-      setCurrentPage(1);
+    if (!response.ok) {
+      setError(json.error ?? "No se pudieron cargar las campañas.");
       setIsLoading(false);
       return;
     }
+
+    setCampaigns(json.data ?? []);
+    setCurrentPage(1);
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -185,7 +174,7 @@ export default function CampanasPage() {
       return;
     }
 
-    await loadCampaigns(queryParams, false);
+    await loadCampaigns(queryParams);
   }
 
   const totalPages = Math.max(1, Math.ceil(campaigns.length / CAMPAIGNS_PER_PAGE));

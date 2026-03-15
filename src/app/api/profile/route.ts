@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
+import { validateTrustedOrigin } from "@/lib/security/http";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -68,6 +69,11 @@ export async function PUT(request: NextRequest) {
     const authUser = await getAuthenticatedUser();
     if (!authUser) {
       return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+    }
+
+    const originError = validateTrustedOrigin(request);
+    if (originError) {
+      return originError;
     }
 
     const json = await request.json();

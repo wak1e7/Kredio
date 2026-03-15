@@ -7,7 +7,6 @@ const publicEnvSchema = z.object({
 
 const serverEnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   PG_SSL_REJECT_UNAUTHORIZED: z
     .string()
     .optional()
@@ -29,7 +28,6 @@ export function getPublicEnv() {
 export function getServerEnv() {
   return serverEnvSchema.parse({
     DATABASE_URL: process.env.DATABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     PG_SSL_REJECT_UNAUTHORIZED: process.env.PG_SSL_REJECT_UNAUTHORIZED,
   });
 }

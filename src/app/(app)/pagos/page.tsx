@@ -1,9 +1,10 @@
 ﻿"use client";
 
+import { ListFilters } from "@/components/ui/list-filters";
 import { PageHeading } from "@/components/ui/page-heading";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Panel } from "@/components/ui/panel";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type CustomerOption = { id: string; fullName: string };
@@ -37,6 +38,8 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 2,
 });
 const PAYMENTS_PER_PAGE = 10;
+const ENYE = String.fromCharCode(241);
+const ACUTE_E = String.fromCharCode(233);
 
 function toDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -71,54 +74,43 @@ export default function PagosPage() {
     setNotes("");
   }
 
-  const loadData = useCallback(async (retrySeed = true) => {
+  const loadData = useCallback(async () => {
     setError(null);
     setIsLoading(true);
 
-    let hasRetriedSeed = false;
+    const [customersRes, campaignsRes, paymentsRes] = await Promise.all([
+      fetch("/api/customers?status=ACTIVE&debtMode=with", { cache: "no-store" }),
+      fetch("/api/campaigns", { cache: "no-store" }),
+      fetch("/api/payments", { cache: "no-store" }),
+    ]);
 
-    while (true) {
-      const [customersRes, campaignsRes, paymentsRes] = await Promise.all([
-        fetch("/api/customers?status=ACTIVE&debtMode=with", { cache: "no-store" }),
-        fetch("/api/campaigns", { cache: "no-store" }),
-        fetch("/api/payments", { cache: "no-store" }),
-      ]);
+    const customersJson = (await customersRes.json()) as {
+      data?: Array<{ id: string; fullName: string }>;
+      error?: string;
+    };
+    const campaignsJson = (await campaignsRes.json()) as {
+      data?: CampaignOption[];
+      error?: string;
+    };
+    const paymentsJson = (await paymentsRes.json()) as { data?: PaymentRow[]; error?: string };
 
-      if ((customersRes.status === 404 || campaignsRes.status === 404 || paymentsRes.status === 404) && retrySeed && !hasRetriedSeed) {
-        hasRetriedSeed = true;
-        await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
-        continue;
-      }
-
-      const customersJson = (await customersRes.json()) as {
-        data?: Array<{ id: string; fullName: string }>;
-        error?: string;
-      };
-      const campaignsJson = (await campaignsRes.json()) as {
-        data?: CampaignOption[];
-        error?: string;
-      };
-      const paymentsJson = (await paymentsRes.json()) as { data?: PaymentRow[]; error?: string };
-
-      if (!customersRes.ok || !campaignsRes.ok || !paymentsRes.ok) {
-        setError(customersJson.error ?? campaignsJson.error ?? paymentsJson.error ?? "No se pudo cargar pagos.");
-        setIsLoading(false);
-        return;
-      }
-
-      const customerData = customersJson.data ?? [];
-      setCustomers(customerData);
-      setCampaignOptions(campaignsJson.data ?? []);
-      setPayments(paymentsJson.data ?? []);
-      setCurrentPage(1);
-
-      if (!customerId && customerData[0]) {
-        setCustomerId(customerData[0].id);
-      }
-
+    if (!customersRes.ok || !campaignsRes.ok || !paymentsRes.ok) {
+      setError(customersJson.error ?? campaignsJson.error ?? paymentsJson.error ?? "No se pudo cargar pagos.");
       setIsLoading(false);
       return;
     }
+
+    const customerData = customersJson.data ?? [];
+    setCustomers(customerData);
+    setCampaignOptions(campaignsJson.data ?? []);
+    setPayments(paymentsJson.data ?? []);
+    setCurrentPage(1);
+
+    if (!customerId && customerData[0]) {
+      setCustomerId(customerData[0].id);
+    }
+
+    setIsLoading(false);
   }, [customerId]);
 
   useEffect(() => {
@@ -174,7 +166,7 @@ export default function PagosPage() {
     setSuccessMessage(isEditing ? "Pago actualizado correctamente." : "Pago registrado correctamente.");
     setLatestAllocation(json.allocationSummary ?? null);
     setShowCreateForm(false);
-    await loadData(false);
+    await loadData();
   }
 
   const filteredPayments = useMemo(() => {
@@ -348,38 +340,33 @@ export default function PagosPage() {
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p> : null}
 
       <Panel delay={280}>
-        <div className="grid gap-3 md:grid-cols-3">
-          <label className="md:col-span-2">
-            <span className="sr-only">Buscar pago</span>
-            <span className="flex items-center gap-2 rounded-xl border bg-[var(--surface)] px-3 py-2">
-              <Search className="h-4 w-4 text-[var(--foreground-muted)]" />
-              <input
-                placeholder="Buscar por cliente o método..."
-                className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--foreground-muted)]"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </span>
-          </label>
+        <ListFilters
+          search={{
+            label: "Buscar pago",
+            placeholder: `Buscar por cliente o m${ACUTE_E}todo...`,
+            value: query,
+            onChange: (value) => {
+              setQuery(value);
+              setCurrentPage(1);
+            },
+          }}
+        >
           <select
-            className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
+            className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
             value={campaignFilter}
             onChange={(event) => {
               setCampaignFilter(event.target.value);
               setCurrentPage(1);
             }}
           >
-            <option value="all">Todas las campañas</option>
+            <option value="all">{`Todas las campa${ENYE}as`}</option>
             {campaignOptions.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}
               </option>
             ))}
           </select>
-        </div>
+        </ListFilters>
       </Panel>
 
       <Panel delay={300}>

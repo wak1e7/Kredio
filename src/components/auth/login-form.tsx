@@ -36,7 +36,6 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
 
     window.sessionStorage.setItem(SESSION_MARKER_KEY, "1");
     window.sessionStorage.setItem(SESSION_LAST_ACTIVITY_KEY, String(Date.now()));
-    await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
     router.replace(nextPath);
     router.refresh();
   }

@@ -11,15 +11,11 @@ type DashboardIndicators = {
   soldYear: number;
   customersWithDebt: number;
   totalCustomers: number;
-  activeCampaigns: number;
-  campaignsCount: number;
 };
 
 type TrendPoint = {
   label: string;
   sold: number;
-  collected: number;
-  debt: number;
 };
 
 type LatestPayment = {
@@ -73,8 +69,6 @@ const emptyIndicators: DashboardIndicators = {
   soldYear: 0,
   customersWithDebt: 0,
   totalCustomers: 0,
-  activeCampaigns: 0,
-  campaignsCount: 0,
 };
 
 function riskBadgeClass(riskLevel: TopDebtor["riskLevel"]) {
@@ -248,59 +242,48 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadDashboard = useCallback(
-    async (year = selectedYear, campaignId = selectedCampaignId, retrySeed = true) => {
+    async (year = selectedYear, campaignId = selectedCampaignId) => {
       setError(null);
       setIsLoading(true);
 
-      let hasRetriedSeed = false;
+      const query = new URLSearchParams();
+      query.set("year", String(year));
+      if (campaignId !== "ALL") {
+        query.set("campaignId", campaignId);
+      }
 
-      while (true) {
-        const query = new URLSearchParams();
-        query.set("year", String(year));
-        if (campaignId !== "ALL") {
-          query.set("campaignId", campaignId);
-        }
+      const response = await fetch(`/api/dashboard/overview?${query.toString()}`, { cache: "no-store" });
+      const json = (await response.json()) as DashboardResponse;
 
-        const response = await fetch(`/api/dashboard/overview?${query.toString()}`, { cache: "no-store" });
-        const json = (await response.json()) as DashboardResponse;
-
-        if (!response.ok) {
-          if (response.status === 404 && retrySeed && !hasRetriedSeed) {
-            hasRetriedSeed = true;
-            await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
-            continue;
-          }
-
-          setError(json.error ?? "No se pudo cargar el dashboard.");
-          setIndicators(emptyIndicators);
-          setTrendMode("campaigns");
-          setTrendSeries([]);
-          setLatestPayments([]);
-          setTopDebtors([]);
-          setCampaignOptions([]);
-          setIsLoading(false);
-          return;
-        }
-
-        setAvailableYears(json.data?.availableYears ?? [year]);
-        setSelectedYear(json.data?.selectedYear ?? year);
-        setCampaignOptions(json.data?.campaignOptions ?? []);
-        setSelectedCampaignId(json.data?.selectedCampaignId ?? "ALL");
-        setIndicators(json.data?.indicators ?? emptyIndicators);
-        setTrendMode(json.data?.trendMode ?? "campaigns");
-        setTrendSeries(json.data?.trendSeries ?? []);
-        setLatestPayments(json.data?.latestPayments ?? []);
-        setTopDebtors(json.data?.topDebtors ?? []);
+      if (!response.ok) {
+        setError(json.error ?? "No se pudo cargar el dashboard.");
+        setIndicators(emptyIndicators);
+        setTrendMode("campaigns");
+        setTrendSeries([]);
+        setLatestPayments([]);
+        setTopDebtors([]);
+        setCampaignOptions([]);
         setIsLoading(false);
         return;
       }
+
+      setAvailableYears(json.data?.availableYears ?? [year]);
+      setSelectedYear(json.data?.selectedYear ?? year);
+      setCampaignOptions(json.data?.campaignOptions ?? []);
+      setSelectedCampaignId(json.data?.selectedCampaignId ?? "ALL");
+      setIndicators(json.data?.indicators ?? emptyIndicators);
+      setTrendMode(json.data?.trendMode ?? "campaigns");
+      setTrendSeries(json.data?.trendSeries ?? []);
+      setLatestPayments(json.data?.latestPayments ?? []);
+      setTopDebtors(json.data?.topDebtors ?? []);
+      setIsLoading(false);
     },
     [selectedCampaignId, selectedYear],
   );
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      loadDashboard(selectedYear, selectedCampaignId, true);
+      loadDashboard(selectedYear, selectedCampaignId);
     }, 0);
 
     return () => {

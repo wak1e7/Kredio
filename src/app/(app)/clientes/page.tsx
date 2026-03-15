@@ -1,9 +1,10 @@
 "use client";
 
+import { ListFilters } from "@/components/ui/list-filters";
 import { PageHeading } from "@/components/ui/page-heading";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Panel } from "@/components/ui/panel";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -80,33 +81,22 @@ export default function ClientesPage() {
     return params;
   }, [filterMode, query]);
 
-  const loadCustomers = useCallback(async (params: URLSearchParams, retrySeed = true) => {
+  const loadCustomers = useCallback(async (params: URLSearchParams) => {
     setError(null);
     setIsLoading(true);
 
-    let hasRetriedSeed = false;
+    const response = await fetch(`/api/customers?${params.toString()}`, { cache: "no-store" });
+    const json = (await response.json()) as { data?: CustomerRow[]; error?: string };
 
-    while (true) {
-      const response = await fetch(`/api/customers?${params.toString()}`, { cache: "no-store" });
-      const json = (await response.json()) as { data?: CustomerRow[]; error?: string };
-
-      if (!response.ok) {
-        if (response.status === 404 && retrySeed && !hasRetriedSeed) {
-          hasRetriedSeed = true;
-          await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
-          continue;
-        }
-
-        setError(json.error ?? "No se pudo cargar clientes.");
-        setIsLoading(false);
-        return;
-      }
-
-      setCustomers(json.data ?? []);
-      setCurrentPage(1);
+    if (!response.ok) {
+      setError(json.error ?? "No se pudo cargar clientes.");
       setIsLoading(false);
       return;
     }
+
+    setCustomers(json.data ?? []);
+    setCurrentPage(1);
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -182,7 +172,7 @@ export default function ClientesPage() {
       return;
     }
 
-    await loadCustomers(queryParams, false);
+    await loadCustomers(queryParams);
   }
 
   const totalPages = Math.max(1, Math.ceil(customers.length / CUSTOMERS_PER_PAGE));
@@ -285,21 +275,16 @@ export default function ClientesPage() {
       ) : null}
 
       <Panel delay={180}>
-        <div className="grid gap-3 md:grid-cols-3">
-          <label className="md:col-span-2">
-            <span className="sr-only">Buscar cliente</span>
-            <span className="flex items-center gap-2 rounded-xl border bg-[var(--surface)] px-3 py-2">
-              <Search className="h-4 w-4 text-[var(--foreground-muted)]" />
-              <input
-                placeholder="Buscar por nombre o teléfono..."
-                className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--foreground-muted)]"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </span>
-          </label>
+        <ListFilters
+          search={{
+            label: "Buscar cliente",
+            placeholder: "Buscar por nombre o teléfono...",
+            value: query,
+            onChange: setQuery,
+          }}
+        >
           <select
-            className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
+            className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
             value={filterMode}
             onChange={(event) => setFilterMode(event.target.value as FilterMode)}
           >
@@ -308,7 +293,7 @@ export default function ClientesPage() {
             <option value="withoutDebt">Sin deuda</option>
             <option value="inactive">Inactivos</option>
           </select>
-        </div>
+        </ListFilters>
       </Panel>
 
       {error ? (

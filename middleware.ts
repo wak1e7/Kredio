@@ -1,8 +1,10 @@
+import { applySecurityHeaders } from "@/lib/security/http";
 import { updateSession } from "@/lib/supabase/middleware";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = new Set<string>(["/login", "/registro", "/recuperar-acceso", "/auth/update-password"]);
 const PUBLIC_API_PREFIX = ["/api/health"];
+
+const PUBLIC_ROUTES = new Set<string>(["/login", "/recuperar-acceso", "/auth/update-password"]);
 
 function isPublicRoute(pathname: string) {
   return (
@@ -21,15 +23,15 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/api")) {
     if (!isPublicApi(pathname) && !user) {
-      return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+      return applySecurityHeaders(NextResponse.json({ error: "No autenticado." }, { status: 401 }));
     }
-    return response;
+    return applySecurityHeaders(response);
   }
 
   if (pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return applySecurityHeaders(NextResponse.redirect(url));
   }
 
   const publicRoute = isPublicRoute(pathname);
@@ -38,10 +40,10 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    return applySecurityHeaders(NextResponse.redirect(url));
   }
 
-  return response;
+  return applySecurityHeaders(response);
 }
 
 export const config = {

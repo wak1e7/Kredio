@@ -12,7 +12,7 @@ export async function GET() {
     const ownedBusiness = await getOwnedBusiness(user.id);
     if (!ownedBusiness) {
       return NextResponse.json(
-        { error: "No se encontro un negocio para este usuario. Ejecuta /api/setup/dev-seed." },
+        { error: "No se encontró un negocio para este usuario." },
         { status: 404 },
       );
     }
@@ -88,4 +88,5 @@ export async function GET() {
     );
   }
 }
+
 

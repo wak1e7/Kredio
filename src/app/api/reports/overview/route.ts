@@ -13,7 +13,7 @@ async function resolveBusinessId(userId: string, requestedBusinessId: string | n
 
   const ownedBusiness = await getOwnedBusiness(userId);
   if (!ownedBusiness) {
-    return { error: "No se encontro un negocio para este usuario. Ejecuta /api/setup/dev-seed.", status: 404 as const };
+    return { error: "No se encontró un negocio para este usuario.", status: 404 as const };
   }
 
   return { businessId: ownedBusiness.id };
@@ -374,4 +374,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 
