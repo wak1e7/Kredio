@@ -43,6 +43,7 @@ type NotificationItem = {
 };
 
 const SESSION_MARKER_KEY = "kredio.active-browser-session";
+const SESSION_LAST_ACTIVITY_KEY = "kredio.last-activity-at";
 
 const mainItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -239,6 +240,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     setIsNotificationsOpen(false);
     setIsAccountMenuOpen(false);
     window.sessionStorage.removeItem(SESSION_MARKER_KEY);
+    window.sessionStorage.removeItem(SESSION_LAST_ACTIVITY_KEY);
     setIsSigningOut(true);
     await supabase.auth.signOut();
     setIsSigningOut(false);
