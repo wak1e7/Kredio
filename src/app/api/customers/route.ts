@@ -137,11 +137,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: businessResolution.error }, { status: businessResolution.status });
     }
 
+    const normalizedPhone = payload.phone.trim();
+
+    const existingCustomer = await prisma.customer.findFirst({
+      where: {
+        businessId: businessResolution.businessId,
+        phone: normalizedPhone,
+      },
+      select: {
+        id: true,
+        fullName: true,
+      },
+    });
+
+    if (existingCustomer) {
+      return NextResponse.json(
+        {
+          error: `Ya existe un cliente con este teléfono: ${existingCustomer.fullName}.`,
+        },
+        { status: 409 },
+      );
+    }
+
     const created = await prisma.customer.create({
       data: {
         businessId: businessResolution.businessId,
         fullName: payload.fullName,
-        phone: payload.phone,
+        phone: normalizedPhone,
         documentId: payload.documentId,
         address: payload.address,
         email: payload.email,

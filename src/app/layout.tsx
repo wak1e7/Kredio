@@ -1,4 +1,6 @@
 import { SessionPersistenceGate } from "@/components/auth/session-persistence-gate";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
@@ -33,6 +35,8 @@ export default function RootLayout({
       <body className={`${manrope.variable} ${jetBrainsMono.variable} antialiased`}>
         <SessionPersistenceGate />
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

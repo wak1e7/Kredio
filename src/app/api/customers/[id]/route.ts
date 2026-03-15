@@ -62,11 +62,38 @@ export async function PATCH(
       return NextResponse.json({ error: "Cliente no encontrado." }, { status: 404 });
     }
 
+    const normalizedPhone = payload.phone?.trim();
+
+    if (normalizedPhone) {
+      const existingCustomer = await prisma.customer.findFirst({
+        where: {
+          businessId: ownedBusiness.id,
+          phone: normalizedPhone,
+          NOT: {
+            id: customer.id,
+          },
+        },
+        select: {
+          id: true,
+          fullName: true,
+        },
+      });
+
+      if (existingCustomer) {
+        return NextResponse.json(
+          {
+            error: `Ya existe un cliente con este teléfono: ${existingCustomer.fullName}.`,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const updatedCustomer = await prisma.customer.update({
       where: { id: customer.id },
       data: {
         fullName: payload.fullName?.trim(),
-        phone: payload.phone?.trim(),
+        phone: normalizedPhone,
         documentId:
           payload.documentId === undefined
             ? undefined
