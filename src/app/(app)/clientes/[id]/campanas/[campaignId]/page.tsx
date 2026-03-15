@@ -82,8 +82,8 @@ export default async function ClienteCampaignDetailPage({
     },
   });
 
-  const itemRows: PurchaseItemRow[] = purchases.flatMap((purchase) =>
-    purchase.items.map((item) => ({
+  const itemRows: PurchaseItemRow[] = purchases.flatMap((purchase: (typeof purchases)[number]) =>
+    purchase.items.map((item: (typeof purchase.items)[number]) => ({
       key: item.id,
       product: item.productName,
       qty: item.quantity,
