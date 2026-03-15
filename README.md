@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kredio SaaS
 
-## Getting Started
+Frontend y backend en un solo proyecto con Next.js, preparado para PostgreSQL (Supabase), Prisma y despliegue en Vercel Hobby.
 
-First, run the development server:
+## Stack
+- Next.js 16 + React 19 + TypeScript
+- Tailwind CSS 4
+- Prisma 7
+- Supabase Postgres + Storage
+- Vercel Hobby
 
+## Estado actual
+- Frontend completo segun PRD implementado (solo UI, sin logica de backend):
+  - `/dashboard`
+  - `/clientes`
+  - `/clientes/[id]`
+  - `/clientes/[id]/campanas/[campaignId]`
+  - `/campanas`
+  - `/compras`
+  - `/pagos`
+  - `/reportes`
+  - `/configuracion`
+  - `/login`
+  - `/registro`
+  - `/recuperar-acceso`
+- Productos integrados en detalle de cada cliente (`/clientes/[id]`)
+- Analisis del PRD en: `docs/PRD_ANALISIS_MVP.md`.
+- Guia de endpoints backend: `docs/BACKEND_API.md`.
+- Backend base implementado:
+  - Prisma schema en `prisma/schema.prisma`
+  - Migracion inicial en `prisma/migrations/202603110001_init/migration.sql`
+  - RLS + trigger auth en `supabase/migrations/202603110002_auth_rls.sql`
+  - Auth real con Supabase (login/logout, recuperacion y proteccion de rutas)
+  - Endpoints API:
+    - `/api/health`
+    - `/api/customers`
+    - `/api/campaigns`
+    - `/api/purchases`
+    - `/api/payments`
+    - `/api/setup/dev-seed`
+
+## Ejecutar en local
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir: `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configuracion backend (Supabase)
+1. Completa tu `DATABASE_URL` real en `.env` (password de la base Supabase).
+   - Si en Windows/red corporativa ves `self-signed certificate in certificate chain`, agrega:
+   - `PG_SSL_REJECT_UNAUTHORIZED=false`
+2. Genera cliente Prisma:
+```bash
+npm run prisma:generate
+```
+3. Aplica esquema:
+```bash
+npm run prisma:push
+```
+4. Ejecuta SQL de RLS/trigger:
+   - Abre Supabase SQL Editor y corre `supabase/migrations/202603110002_auth_rls.sql`
+5. En Supabase Auth > URL Configuration agrega:
+   - Site URL: `http://localhost:3000`
+   - Redirect URLs:
+     - `http://localhost:3000/auth/callback`
+     - `http://localhost:3000/auth/update-password`
+6. Levanta app:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Flujo profesional recomendado
+1. Crear repositorio git:
+```bash
+git init
+git add .
+git commit -m "feat: implement full PRD frontend screens"
+```
+2. Construir modelo de datos con Prisma.
+3. Conectar Prisma a Supabase PostgreSQL.
+4. Implementar autenticacion y reglas de negocio.
+5. Desplegar en Vercel Hobby.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+- `npm run dev`
+- `npm run lint`
+- `npm run build`
+- `npm run prisma:generate`
+- `npm run prisma:push`
+- `npm run prisma:migrate`
+- `npm run prisma:studio`

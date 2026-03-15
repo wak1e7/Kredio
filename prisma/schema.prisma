@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CampaignStatus {
+  OPEN
+  CLOSED
+}
+
+enum CustomerCampaignStatus {
+  OPEN
+  PARTIAL
+  PAID
+}
+
+model AppUser {
+  id         String    @id @db.Uuid
+  email      String    @unique
+  fullName   String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  businesses Business[] @relation("BusinessOwner")
+}
+
+model Business {
+  id          String                  @id @default(uuid()) @db.Uuid
+  ownerId     String                  @unique @db.Uuid
+  name        String
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  owner       AppUser                 @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  campaigns   Campaign[]
+  customers   Customer[]
+  expenses    Expense[]
+  products    Product[]
+  purchases   Purchase[]
+  payments    Payment[]
+}
+
+model Customer {
+  id               String                  @id @default(uuid()) @db.Uuid
+  businessId       String                  @db.Uuid
+  fullName         String
+  documentId       String?
+  phone            String
+  address          String?
+  email            String?
+  notes            String?
+  status           CustomerStatus          @default(ACTIVE)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  business         Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchases        Purchase[]
+  payments         Payment[]
+  campaignBalances CustomerCampaignBalance[]
+  paymentApps      PaymentApplication[]
+
+  @@index([businessId])
+  @@index([businessId, fullName])
+}
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  businessId  String   @db.Uuid
+  code        String
+  name        String
+  size        String?
+  color       String?
+  category    String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, code])
+  @@index([businessId, name])
+}
+
+model Campaign {
+  id               String                  @id @default(uuid()) @db.Uuid
+  businessId       String                  @db.Uuid
+  name             String
+  month            Int
+  year             Int
+  startDate        DateTime
+  endDate          DateTime?
+  status           CampaignStatus          @default(OPEN)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  business         Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  expenses         Expense[]
+  purchases        Purchase[]
+  customerBalances CustomerCampaignBalance[]
+  paymentApps      PaymentApplication[]
+
+  @@unique([businessId, month, year])
+  @@index([businessId, status])
+}
+
+model Purchase {
+  id           String         @id @default(uuid()) @db.Uuid
+  businessId   String         @db.Uuid
+  customerId   String         @db.Uuid
+  campaignId   String         @db.Uuid
+  purchaseDate DateTime       @default(now())
+  notes        String?
+  totalAmount  Decimal        @db.Decimal(12, 2)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  business     Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer     Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  campaign     Campaign       @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  items        PurchaseItem[]
+
+  @@index([businessId, purchaseDate])
+  @@index([customerId])
+  @@index([campaignId])
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  purchaseId  String   @db.Uuid
+  productCode String
+  productName String
+  category    String?
+  size        String?
+  color       String?
+  quantity    Int
+  costPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  salePrice   Decimal  @default(0) @db.Decimal(12, 2)
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  subtotal    Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+}
+
+model CustomerCampaignBalance {
+  id             String                 @id @default(uuid()) @db.Uuid
+  customerId     String                 @db.Uuid
+  campaignId     String                 @db.Uuid
+  totalPurchased Decimal                @default(0) @db.Decimal(12, 2)
+  totalPaid      Decimal                @default(0) @db.Decimal(12, 2)
+  balance        Decimal                @default(0) @db.Decimal(12, 2)
+  status         CustomerCampaignStatus @default(OPEN)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  customer       Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  campaign       Campaign               @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  paymentApps    PaymentApplication[]
+
+  @@unique([customerId, campaignId])
+  @@index([customerId, status])
+}
+
+model Payment {
+  id             String               @id @default(uuid()) @db.Uuid
+  businessId     String               @db.Uuid
+  customerId     String               @db.Uuid
+  paymentDate    DateTime             @default(now())
+  amount         Decimal              @db.Decimal(12, 2)
+  method         String?
+  notes          String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  business       Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer       Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  applications   PaymentApplication[]
+
+  @@index([businessId, paymentDate])
+  @@index([customerId])
+}
+
+model Expense {
+  id          String   @id @default(uuid()) @db.Uuid
+  businessId  String   @db.Uuid
+  campaignId  String?  @db.Uuid
+  expenseDate DateTime @default(now())
+  concept     String
+  amount      Decimal  @db.Decimal(12, 2)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  campaign    Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([businessId, expenseDate])
+}
+
+model PaymentApplication {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  paymentId           String                 @db.Uuid
+  customerId          String                 @db.Uuid
+  campaignId          String                 @db.Uuid
+  customerCampaignId  String                 @db.Uuid
+  appliedAmount       Decimal                @db.Decimal(12, 2)
+  appliedAt           DateTime               @default(now())
+  payment             Payment                @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  customer            Customer               @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  campaign            Campaign               @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  customerCampaign    CustomerCampaignBalance @relation(fields: [customerCampaignId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([customerId, campaignId])
+}

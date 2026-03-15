@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f7f8fc;
+  --foreground: #17233a;
+  --foreground-muted: #6b768d;
+  --border: #e3e8f2;
+  --accent: #4f46e5;
+  --accent-soft: #eff0ff;
+  --success: #20c997;
+  --warning: #f59f00;
+  --danger: #f06595;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), sans-serif;
+  min-height: 100vh;
+}
+
+* {
+  border-color: var(--border);
+}
+
+.kredio-bg {
+  background: var(--background);
+}
+
+.glass-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(14, 30, 55, 0.04);
+}
+
+.animate-fade-up {
+  animation: fade-up 0.55s ease forwards;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+@keyframes fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
