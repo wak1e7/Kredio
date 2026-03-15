@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
       method: payment.method,
       notes: payment.notes,
       applications: payment.applications.map((app) => ({
+        campaignId: app.campaignId,
         campaignName: app.campaign.name,
         appliedAmount: Number(app.appliedAmount.toString()),
       })),

@@ -23,11 +23,11 @@ export default function RecuperarAccesoPage() {
     setIsLoading(false);
 
     if (resetError) {
-      setError("No se pudo enviar el correo de recuperacion.");
+      setError("No se pudo enviar el correo de recuperación.");
       return;
     }
 
-    setMessage("Te enviamos un enlace para restablecer tu contrasena.");
+    setMessage("Te enviamos un enlace para restablecer tu contraseña.");
   }
 
   return (
@@ -65,7 +65,7 @@ export default function RecuperarAccesoPage() {
 
         <div className="mt-4 text-center text-sm">
           <Link href="/login" className="font-semibold text-[var(--accent)]">
-            Volver al inicio de sesion
+            Volver al inicio de sesión
           </Link>
         </div>
       </div>

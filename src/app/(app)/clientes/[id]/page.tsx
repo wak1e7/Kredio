@@ -49,7 +49,7 @@ export default async function ClienteProfilePage({
       <PageHeading
         overline="Perfil del cliente"
         title={statement.customer.fullName}
-        description="Estado de cuenta, campanas, productos comprados y pagos realizados."
+        description="Estado de cuenta, campañas, productos comprados y pagos realizados."
         actions={
           <a
             href={`/api/customers/${id}/statement`}
@@ -76,25 +76,25 @@ export default async function ClienteProfilePage({
           <p className="mt-2 text-3xl font-semibold">{formatCurrency(statement.totals.totalPaid)}</p>
         </Panel>
         <Panel className="rounded-xl p-4" delay={300}>
-          <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Campanas</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Campañas</p>
           <p className="mt-2 text-3xl font-semibold">{statement.totals.campaignsCount}</p>
         </Panel>
         <Panel className="rounded-xl p-4" delay={340}>
-          <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Campanas con deuda</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Campañas con deuda</p>
           <p className="mt-2 text-3xl font-semibold">{statement.totals.campaignsWithDebtCount}</p>
         </Panel>
       </section>
 
       <Panel delay={400}>
-        <h2 className="text-lg font-semibold">Campanas del cliente</h2>
+        <h2 className="text-lg font-semibold">Campañas del cliente</h2>
         {statement.campaigns.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aun no hay campanas registradas para este cliente.</p>
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aún no hay campañas registradas para este cliente.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 <tr>
-                  <th className="pb-2 font-semibold">Campana</th>
+                  <th className="pb-2 font-semibold">Campaña</th>
                   <th className="pb-2 font-semibold">Total comprado</th>
                   <th className="pb-2 font-semibold">Total pagado</th>
                   <th className="pb-2 font-semibold">Saldo</th>
@@ -117,7 +117,7 @@ export default async function ClienteProfilePage({
                         href={`/clientes/${id}/campanas/${campaign.campaignId}`}
                         className="rounded-lg bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)]"
                       >
-                        Ver campana
+                        Ver campaña
                       </Link>
                     </td>
                   </tr>
@@ -131,7 +131,7 @@ export default async function ClienteProfilePage({
       <Panel delay={450}>
         <h2 className="text-lg font-semibold">Productos comprados</h2>
         {statement.products.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aun no hay productos comprados por este cliente.</p>
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aún no hay productos comprados por este cliente.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -140,7 +140,7 @@ export default async function ClienteProfilePage({
                   <th className="pb-2 font-semibold">Producto</th>
                   <th className="pb-2 font-semibold">Cantidad total</th>
                   <th className="pb-2 font-semibold">Total comprado</th>
-                  <th className="pb-2 font-semibold">Ultima campana</th>
+                  <th className="pb-2 font-semibold">Última campaña</th>
                 </tr>
               </thead>
               <tbody>
@@ -161,7 +161,7 @@ export default async function ClienteProfilePage({
       <Panel delay={500}>
         <h2 className="text-lg font-semibold">Pagos del cliente</h2>
         {statement.payments.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aun no hay pagos registrados para este cliente.</p>
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aún no hay pagos registrados para este cliente.</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {statement.payments.map((payment) => (
@@ -173,7 +173,7 @@ export default async function ClienteProfilePage({
                   </p>
                 </div>
                 <p className="mt-1 text-sm text-[var(--foreground-muted)]">
-                  Metodo: {payment.method ?? "No especificado"} | {payment.notes ?? "Sin observacion"}
+                  Método: {payment.method ?? "No especificado"} | {payment.notes ?? "Sin observación"}
                 </p>
               </li>
             ))}

@@ -2,8 +2,8 @@
 
 import { PageHeading } from "@/components/ui/page-heading";
 import { Panel } from "@/components/ui/panel";
-import { Plus } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { Plus, Search } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type CustomerOption = { id: string; fullName: string };
 type CampaignOption = { id: string; name: string };
@@ -43,6 +43,7 @@ const PURCHASES_PER_PAGE = 10;
 export default function ComprasPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
+  const [campaignFilterOptions, setCampaignFilterOptions] = useState<CampaignOption[]>([]);
   const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +53,8 @@ export default function ComprasPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [campaignFilter, setCampaignFilter] = useState("all");
 
   const [customerId, setCustomerId] = useState("");
   const [campaignId, setCampaignId] = useState("");
@@ -83,13 +86,14 @@ export default function ComprasPage() {
     let hasRetriedSeed = false;
 
     while (true) {
-      const [customersRes, campaignsRes, purchasesRes] = await Promise.all([
+      const [customersRes, campaignsRes, campaignFilterRes, purchasesRes] = await Promise.all([
         fetch("/api/customers?status=ACTIVE", { cache: "no-store" }),
         fetch("/api/campaigns?status=OPEN", { cache: "no-store" }),
+        fetch("/api/campaigns", { cache: "no-store" }),
         fetch("/api/purchases", { cache: "no-store" }),
       ]);
 
-      if ((customersRes.status === 404 || campaignsRes.status === 404 || purchasesRes.status === 404) && retrySeed && !hasRetriedSeed) {
+      if ((customersRes.status === 404 || campaignsRes.status === 404 || campaignFilterRes.status === 404 || purchasesRes.status === 404) && retrySeed && !hasRetriedSeed) {
         hasRetriedSeed = true;
         await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
         continue;
@@ -97,20 +101,23 @@ export default function ComprasPage() {
 
       const customersJson = (await customersRes.json()) as { data?: Array<{ id: string; fullName: string }>; error?: string };
       const campaignsJson = (await campaignsRes.json()) as { data?: Array<{ id: string; name: string }>; error?: string };
+      const campaignFilterJson = (await campaignFilterRes.json()) as { data?: Array<{ id: string; name: string }>; error?: string };
       const purchasesJson = (await purchasesRes.json()) as { data?: PurchaseRow[]; error?: string };
 
-      if (!customersRes.ok || !campaignsRes.ok || !purchasesRes.ok) {
-        setError(customersJson.error ?? campaignsJson.error ?? purchasesJson.error ?? "No se pudo cargar compras.");
+      if (!customersRes.ok || !campaignsRes.ok || !campaignFilterRes.ok || !purchasesRes.ok) {
+        setError(customersJson.error ?? campaignsJson.error ?? campaignFilterJson.error ?? purchasesJson.error ?? "No se pudo cargar compras.");
         setIsLoading(false);
         return;
       }
 
       const customerData = customersJson.data ?? [];
       const campaignData = campaignsJson.data ?? [];
+      const filterCampaignData = campaignFilterJson.data ?? [];
       const purchaseData = purchasesJson.data ?? [];
 
       setCustomers(customerData);
       setCampaigns(campaignData);
+      setCampaignFilterOptions(filterCampaignData);
       setPurchases(purchaseData);
       setCurrentPage(1);
 
@@ -147,7 +154,7 @@ export default function ComprasPage() {
     const parsedSalePrice = Number(salePrice);
 
     if (!customerId || !campaignId) {
-      setError("Selecciona cliente y campana.");
+      setError("Selecciona un cliente y una campaña.");
       return;
     }
 
@@ -200,8 +207,23 @@ export default function ComprasPage() {
     await loadData(false);
   }
 
-  const totalPages = Math.max(1, Math.ceil(purchases.length / PURCHASES_PER_PAGE));
-  const paginatedPurchases = purchases.slice(
+  const filteredPurchases = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return purchases.filter((purchase) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        purchase.customerName.toLowerCase().includes(normalizedQuery) ||
+        purchase.campaignName.toLowerCase().includes(normalizedQuery);
+
+      const matchesCampaign = campaignFilter === "all" || purchase.campaignId === campaignFilter;
+
+      return matchesQuery && matchesCampaign;
+    });
+  }, [campaignFilter, purchases, query]);
+
+  const filteredTotalPages = Math.max(1, Math.ceil(filteredPurchases.length / PURCHASES_PER_PAGE));
+  const paginatedPurchases = filteredPurchases.slice(
     (currentPage - 1) * PURCHASES_PER_PAGE,
     currentPage * PURCHASES_PER_PAGE,
   );
@@ -239,8 +261,8 @@ export default function ComprasPage() {
     <div className="space-y-4">
       <PageHeading
         overline="Registro de compras"
-        title="Compras por cliente y campana"
-        description="Flujo guiado para registrar productos vendidos a credito."
+        title="Compras por cliente y campaña"
+        description="Registra productos vendidos a crédito y asígnalos a la campaña correspondiente."
         actions={
           <button
             type="button"
@@ -257,7 +279,7 @@ export default function ComprasPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white"
           >
             <Plus className="h-4 w-4" />
-            {showCreateForm ? "Cerrar" : "Nueva compra"}
+            {showCreateForm ? "Cerrar formulario" : "Nueva compra"}
           </button>
         }
       />
@@ -286,13 +308,13 @@ export default function ComprasPage() {
 
               <div className="rounded-2xl border bg-[var(--surface)] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 2</p>
-                <p className="mt-1 font-semibold">Seleccionar campana</p>
+                <p className="mt-1 font-semibold">Seleccionar campaña</p>
                 <select
                   className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
                   value={campaignId}
                   onChange={(event) => setCampaignId(event.target.value)}
                 >
-                  <option value="">Seleccionar campana</option>
+                  <option value="">Seleccionar campaña</option>
                   {campaigns.map((campaign) => (
                     <option key={campaign.id} value={campaign.id}>
                       {campaign.name}
@@ -335,7 +357,7 @@ export default function ComprasPage() {
                   }}
                   className="h-10 w-full rounded-xl border text-sm font-semibold"
                 >
-                  Cancelar edicion
+                Cancelar edición
                 </button>
               ) : null}
             </form>
@@ -345,7 +367,7 @@ export default function ComprasPage() {
             <h2 className="text-lg font-semibold">Resultado esperado</h2>
             <ul className="mt-3 space-y-2 text-sm text-[var(--foreground-muted)]">
               <li className="rounded-xl border bg-[var(--surface)] p-3">Se registra la compra con su detalle de productos.</li>
-              <li className="rounded-xl border bg-[var(--surface)] p-3">Se incrementa la deuda de la campana seleccionada.</li>
+              <li className="rounded-xl border bg-[var(--surface)] p-3">Se incrementa la deuda de la campaña seleccionada.</li>
               <li className="rounded-xl border bg-[var(--surface)] p-3">Se actualiza la deuda total del cliente.</li>
             </ul>
             {successMessage ? <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</p> : null}
@@ -355,12 +377,47 @@ export default function ComprasPage() {
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p> : null}
 
+      <Panel delay={280}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="md:col-span-2">
+            <span className="sr-only">Buscar compra</span>
+            <span className="flex items-center gap-2 rounded-xl border bg-[var(--surface)] px-3 py-2">
+              <Search className="h-4 w-4 text-[var(--foreground-muted)]" />
+              <input
+                placeholder="Buscar por cliente o campaña..."
+                className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--foreground-muted)]"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </span>
+          </label>
+          <select
+            className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
+            value={campaignFilter}
+            onChange={(event) => {
+              setCampaignFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Todas las campañas</option>
+            {campaignFilterOptions.map((campaign) => (
+              <option key={campaign.id} value={campaign.id}>
+                {campaign.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Panel>
+
       <Panel delay={310}>
-        <h2 className="text-lg font-semibold">Ultimas compras registradas</h2>
+        <h2 className="text-lg font-semibold">Últimas compras registradas</h2>
         {isLoading ? (
           <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando compras...</p>
-        ) : purchases.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay compras registradas.</p>
+        ) : filteredPurchases.length === 0 ? (
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay compras para mostrar con el filtro actual.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -368,10 +425,10 @@ export default function ComprasPage() {
                 <tr>
                   <th className="pb-2 font-semibold">Fecha</th>
                   <th className="pb-2 font-semibold">Cliente</th>
-                  <th className="pb-2 font-semibold">Campana</th>
+                  <th className="pb-2 font-semibold">Campaña</th>
                   <th className="pb-2 font-semibold">Items</th>
                   <th className="pb-2 font-semibold">Total</th>
-                  <th className="pb-2 font-semibold">Accion</th>
+                  <th className="pb-2 font-semibold">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -389,7 +446,7 @@ export default function ComprasPage() {
                         disabled={purchase.items.length !== 1}
                         title={
                           purchase.items.length !== 1
-                            ? "La edicion multiproducto aun no esta disponible."
+                            ? "La edición con varios productos aún no está disponible."
                             : undefined
                         }
                         className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
@@ -401,10 +458,10 @@ export default function ComprasPage() {
                 ))}
               </tbody>
             </table>
-            {totalPages > 1 ? (
+            {filteredTotalPages > 1 ? (
               <div className="mt-4 flex items-center justify-between gap-3">
                 <p className="text-sm text-[var(--foreground-muted)]">
-                  Pagina {currentPage} de {totalPages}
+                  Página {currentPage} de {filteredTotalPages}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -417,8 +474,8 @@ export default function ComprasPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((page) => Math.min(filteredTotalPages, page + 1))}
+                    disabled={currentPage === filteredTotalPages}
                     className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Siguiente

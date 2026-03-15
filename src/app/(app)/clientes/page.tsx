@@ -193,9 +193,9 @@ export default function ClientesPage() {
   return (
     <div className="space-y-4">
       <PageHeading
-        overline="Modulo de clientes"
+        overline="Módulo de clientes"
         title="Clientes"
-        description="Registro, busqueda y control de deuda por cliente."
+        description="Registro, búsqueda y seguimiento de deuda por cliente."
         actions={
           <button
             type="button"
@@ -230,7 +230,7 @@ export default function ClientesPage() {
             />
             <input
               className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-              placeholder="Telefono *"
+                placeholder="Teléfono *"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               required
@@ -250,7 +250,7 @@ export default function ClientesPage() {
             />
             <input
               className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm md:col-span-2"
-              placeholder="Direccion (opcional)"
+                placeholder="Dirección (opcional)"
               value={address}
               onChange={(event) => setAddress(event.target.value)}
             />
@@ -276,7 +276,7 @@ export default function ClientesPage() {
                 }}
                 className="h-10 rounded-xl border px-4 text-sm font-semibold md:col-span-2 md:w-fit"
               >
-                Cancelar edicion
+                Cancelar edición
               </button>
             ) : null}
           </form>
@@ -290,7 +290,7 @@ export default function ClientesPage() {
             <span className="flex items-center gap-2 rounded-xl border bg-[var(--surface)] px-3 py-2">
               <Search className="h-4 w-4 text-[var(--foreground-muted)]" />
               <input
-                placeholder="Buscar por nombre o telefono..."
+                placeholder="Buscar por nombre o teléfono..."
                 className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--foreground-muted)]"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -325,7 +325,7 @@ export default function ClientesPage() {
               <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 <tr>
                   <th className="pb-2 font-semibold">Nombre</th>
-                  <th className="pb-2 font-semibold">Telefono</th>
+                  <th className="pb-2 font-semibold">Teléfono</th>
                   <th className="pb-2 font-semibold">Deuda total</th>
                   <th className="pb-2 font-semibold">Registro</th>
                   <th className="pb-2 font-semibold">Estado</th>
@@ -395,7 +395,7 @@ export default function ClientesPage() {
             {totalPages > 1 ? (
               <div className="mt-4 flex items-center justify-between gap-3">
                 <p className="text-sm text-[var(--foreground-muted)]">
-                  Pagina {currentPage} de {totalPages}
+                  Página {currentPage} de {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
                   <button

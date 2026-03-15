@@ -29,7 +29,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     setIsLoading(false);
 
     if (error) {
-      setErrorMessage("Credenciales incorrectas. Verifica correo y contrasena.");
+      setErrorMessage("Credenciales incorrectas. Verifica tu correo y contraseña.");
       return;
     }
 
@@ -47,13 +47,13 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
             K
           </span>
           <h1 className="mt-3 text-2xl font-semibold">Ingresar a Kredio</h1>
-          <p className="mt-1 text-sm text-[var(--foreground-muted)]">Gestiona tus ventas a credito de forma segura.</p>
+          <p className="mt-1 text-sm text-[var(--foreground-muted)]">Gestiona tus ventas a crédito de forma simple y segura.</p>
         </div>
 
         <form className="space-y-3" onSubmit={onSubmit}>
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
-              Correo o usuario
+              Correo electrónico
             </span>
             <input
               className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
@@ -65,7 +65,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Contrasena</span>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Contraseña</span>
             <input
               className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
               placeholder="********"
@@ -85,13 +85,13 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
             disabled={isLoading}
             className="mt-2 h-10 w-full rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading ? "Ingresando..." : "Iniciar sesion"}
+            {isLoading ? "Ingresando..." : "Iniciar sesión"}
           </button>
         </form>
 
         <div className="mt-4 text-center text-sm">
           <Link href="/recuperar-acceso" className="font-semibold text-[var(--accent)]">
-            Olvidaste tu contrasena
+            ¿Olvidaste tu contraseña?
           </Link>
         </div>
       </div>

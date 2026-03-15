@@ -73,7 +73,7 @@ export function ProfileSettings() {
     setPasswordMessage(null);
 
     if (fullName.trim().length < 2) {
-      setError("Ingresa un nombre valido.");
+      setError("Ingresa un nombre válido.");
       return;
     }
 
@@ -127,12 +127,12 @@ export function ProfileSettings() {
     setPasswordMessage(null);
 
     if (newPassword.length < 6) {
-      setError("La nueva contrasena debe tener al menos 6 caracteres.");
+      setError("La nueva contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("La confirmacion de contrasena no coincide.");
+      setError("La confirmación de la contraseña no coincide.");
       return;
     }
 
@@ -147,7 +147,7 @@ export function ProfileSettings() {
 
     setNewPassword("");
     setConfirmPassword("");
-    setPasswordMessage("Contrasena actualizada correctamente.");
+    setPasswordMessage("Contraseña actualizada correctamente.");
   }
 
   return (
@@ -155,7 +155,7 @@ export function ProfileSettings() {
       <PageHeading
         overline="Cuenta de usuario"
         title="Perfil"
-        description="Aqui puedes ver y actualizar tu nombre, numero y contrasena."
+        description="Aquí puedes ver y actualizar tu nombre, número y contraseña."
       />
 
       {error ? (
@@ -189,7 +189,7 @@ export function ProfileSettings() {
               </label>
 
               <label className="space-y-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Numero</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Número</span>
                 <input
                   className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
                   value={phone}
@@ -222,24 +222,24 @@ export function ProfileSettings() {
           ) : (
             <form className="mt-3 grid gap-3" onSubmit={onSavePassword}>
               <label className="space-y-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Nueva contrasena</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Nueva contraseña</span>
                 <input
                   className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
                   type="password"
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
-                  placeholder="Minimo 6 caracteres"
+                  placeholder="Mínimo 6 caracteres"
                 />
               </label>
 
               <label className="space-y-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Confirmar contrasena</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Confirmar contraseña</span>
                 <input
                   className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
                   type="password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder="Repite la nueva contrasena"
+                  placeholder="Repite la nueva contraseña"
                 />
               </label>
 
@@ -248,7 +248,7 @@ export function ProfileSettings() {
                 disabled={isSavingPassword}
                 className="h-10 rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSavingPassword ? "Actualizando..." : "Cambiar contrasena"}
+                {isSavingPassword ? "Actualizando..." : "Cambiar contraseña"}
               </button>
 
               {passwordMessage ? (

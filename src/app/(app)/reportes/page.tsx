@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { PageHeading } from "@/components/ui/page-heading";
 import { Panel } from "@/components/ui/panel";
@@ -149,15 +149,15 @@ export default function ReportesPage() {
 
   const selectedCampaignName =
     selectedCampaignId !== "ALL"
-      ? campaignOptions.find((campaign) => campaign.id === selectedCampaignId)?.name ?? "Campana seleccionada"
+      ? campaignOptions.find((campaign) => campaign.id === selectedCampaignId)?.name ?? "Campaña seleccionada"
       : null;
 
   return (
     <div className="space-y-4">
       <PageHeading
-        overline="Modulo de reportes"
+        overline="Módulo de reportes"
         title="Reportes de ventas y rentabilidad"
-        description="Vista anual por defecto, con filtros para revisar una campana especifica dentro del ano."
+        description="Vista anual por defecto, con filtros para revisar una campaña específica dentro del año."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -179,7 +179,7 @@ export default function ReportesPage() {
               value={selectedCampaignId}
               onChange={(event) => setSelectedCampaignId(event.target.value)}
             >
-              <option value="ALL">Todas las campanas</option>
+              <option value="ALL">Todas las campañas</option>
               {campaignOptions.map((campaign) => (
                 <option key={campaign.id} value={campaign.id}>
                   {campaign.name}
@@ -205,19 +205,19 @@ export default function ReportesPage() {
         <Panel delay={380}>
           <div>
             <h2 className="text-lg font-semibold">
-              {selectedCampaignName ? "Campaña" : "Camapañas"}
+              {selectedCampaignName ? "Campaña" : "Campañas"}
             </h2>
             <p className="text-sm text-[var(--foreground-muted)]">
               {selectedCampaignName
                 ? `${selectedCampaignName} en ${selectedYear}`
-                : `${summary.campaignsCount ?? 0} campanas registradas en ${selectedYear}.`}
+                : `${summary.campaignsCount ?? 0} campañas registradas en ${selectedYear}.`}
             </p>
           </div>
 
           {isLoading ? (
-            <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando campanas...</p>
+            <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando campañas...</p>
           ) : campaignBreakdown.length === 0 ? (
-            <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay campanas registradas para este filtro.</p>
+            <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay campañas registradas para este filtro.</p>
           ) : (
             <div className="mt-3 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
@@ -263,7 +263,7 @@ export default function ReportesPage() {
           <p className="text-sm text-[var(--foreground-muted)]">
             {selectedCampaignName
               ? `Gastos registrados en ${selectedCampaignName}.`
-              : `Gastos registrados en las campanas del ${selectedYear}.`}
+              : `Gastos registrados en las campañas del ${selectedYear}.`}
           </p>
         </div>
 
@@ -277,10 +277,10 @@ export default function ReportesPage() {
               <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 <tr>
                   <th className="pb-2 font-semibold">Fecha</th>
-                  <th className="pb-2 font-semibold">Campana</th>
+                  <th className="pb-2 font-semibold">Campaña</th>
                   <th className="pb-2 font-semibold">Concepto</th>
                   <th className="pb-2 font-semibold">Monto</th>
-                  <th className="pb-2 font-semibold">Observacion</th>
+                  <th className="pb-2 font-semibold">Observación</th>
                 </tr>
               </thead>
               <tbody>
@@ -306,3 +306,4 @@ export default function ReportesPage() {
     </div>
   );
 }
+

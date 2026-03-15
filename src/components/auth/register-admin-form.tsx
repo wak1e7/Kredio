@@ -23,7 +23,7 @@ export function RegisterAdminForm() {
     setMessage(null);
 
     if (password.length < 8) {
-      setErrorMessage("La contrasena debe tener al menos 8 caracteres.");
+      setErrorMessage("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -96,7 +96,7 @@ export function RegisterAdminForm() {
           />
           <input
             className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-            placeholder="Contrasena"
+            placeholder="Contraseña"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}

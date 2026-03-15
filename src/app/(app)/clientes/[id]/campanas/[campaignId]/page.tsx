@@ -99,15 +99,15 @@ export default async function ClienteCampaignDetailPage({
   return (
     <div className="space-y-4">
       <PageHeading
-        overline="Detalle de campana"
+        overline="Detalle de campaña"
         title={`${customerCampaign.customer.fullName} - ${customerCampaign.campaign.name}`}
-        description="Productos comprados y resumen financiero de la campana seleccionada."
+        description="Productos comprados y resumen financiero de la campaña seleccionada."
       />
 
       <Panel delay={180}>
         <h2 className="text-lg font-semibold">Productos comprados</h2>
         {itemRows.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aun no hay productos registrados en esta campana.</p>
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Aún no hay productos registrados en esta campaña.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">

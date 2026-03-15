@@ -1,4 +1,4 @@
-import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { calculatePurchaseTotals } from "@/lib/services/financial";
 import { NextRequest, NextResponse } from "next/server";
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!campaign) {
-      return NextResponse.json({ error: "Campana no encontrada para este negocio." }, { status: 404 });
+      return NextResponse.json({ error: "Campaña no encontrada para este negocio." }, { status: 404 });
     }
 
     if (!customer) {
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
 
     if (campaign.status === "CLOSED") {
       return NextResponse.json(
-        { error: "No se pueden registrar compras en una campana cerrada." },
+        { error: "No se pueden registrar compras en una campaña cerrada." },
         { status: 400 },
       );
     }
@@ -279,3 +279,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { syncCustomerLedger } from "@/lib/services/customer-ledger";
 import { calculatePurchaseTotals } from "@/lib/services/financial";
@@ -84,7 +84,7 @@ export async function PATCH(
     }
 
     if (!campaign) {
-      return NextResponse.json({ error: "Campana no encontrada para este negocio." }, { status: 404 });
+      return NextResponse.json({ error: "Campaña no encontrada para este negocio." }, { status: 404 });
     }
 
     const totals = calculatePurchaseTotals(payload.items);
@@ -171,3 +171,4 @@ export async function PATCH(
     );
   }
 }
+

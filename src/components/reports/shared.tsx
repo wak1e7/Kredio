@@ -94,9 +94,9 @@ export function CategoryMarginsPanel({
 }) {
   return (
     <Panel delay={430}>
-      <h2 className="text-lg font-semibold">Categorias</h2>
+      <h2 className="text-lg font-semibold">Categorías</h2>
       {isLoading ? (
-        <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando categorias...</p>
+        <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando categorías...</p>
       ) : rows.length === 0 ? (
         <p className="mt-3 text-sm text-[var(--foreground-muted)]">{emptyLabel}</p>
       ) : (
@@ -142,7 +142,7 @@ export function TopBuyersPanel({
 }) {
   return (
     <Panel delay={480}>
-      <h2 className="text-lg font-semibold">Clientes que mas compran</h2>
+      <h2 className="text-lg font-semibold">Clientes que más compran</h2>
       {isLoading ? (
         <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando ranking...</p>
       ) : rows.length === 0 ? (
@@ -180,7 +180,7 @@ export function TopDebtorsPanel({
 }) {
   return (
     <Panel delay={520}>
-      <h2 className="text-lg font-semibold">Clientes que mas deben</h2>
+      <h2 className="text-lg font-semibold">Clientes que más deben</h2>
       {isLoading ? (
         <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando deudores...</p>
       ) : rows.length === 0 ? (
@@ -195,7 +195,7 @@ export function TopDebtorsPanel({
                 </span>
                 <div>
                   <p className="font-semibold">{debtor.customerName}</p>
-                  <p className="text-sm text-[var(--foreground-muted)]">{debtor.pendingCampaigns} campanas con deuda</p>
+                  <p className="text-sm text-[var(--foreground-muted)]">{debtor.pendingCampaigns} campañas con deuda</p>
                 </div>
               </div>
               <p className="text-base font-semibold">{formatCurrency(debtor.debt)}</p>

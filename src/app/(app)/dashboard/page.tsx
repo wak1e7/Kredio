@@ -310,7 +310,7 @@ export default function DashboardPage() {
 
   const selectedCampaignName =
     selectedCampaignId !== "ALL"
-      ? campaignOptions.find((campaign) => campaign.id === selectedCampaignId)?.name ?? "Campana seleccionada"
+      ? campaignOptions.find((campaign) => campaign.id === selectedCampaignId)?.name ?? "Campaña seleccionada"
       : null;
 
   const metricCards = useMemo(
@@ -321,17 +321,17 @@ export default function DashboardPage() {
         tone: "neutral",
       },
       {
-        title: selectedCampaignName ? "Cobrado en campana" : `Cobrado en ${selectedYear}`,
+        title: selectedCampaignName ? "Cobrado en campaña" : `Cobrado en ${selectedYear}`,
         value: currencyFormatter.format(indicators.collectedYear),
         tone: "positive",
       },
       {
-        title: selectedCampaignName ? "Deuda de campana" : "Deuda total",
+        title: selectedCampaignName ? "Deuda de la campaña" : "Deuda total",
         value: currencyFormatter.format(indicators.totalDebt),
         tone: "danger",
       },
       {
-        title: selectedCampaignName ? "Clientes en campana" : "Clientes del ano",
+        title: selectedCampaignName ? "Clientes en campaña" : "Clientes del año",
         value: `${indicators.totalCustomers}`,
         tone: "neutral",
       },
@@ -349,7 +349,7 @@ export default function DashboardPage() {
       <PageHeading
         overline="Panel principal"
         title="Dashboard"
-        description="Vista anual por defecto, con filtro opcional por campana dentro del ano seleccionado."
+        description="Vista anual por defecto, con filtro opcional por campaña dentro del año seleccionado."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -371,7 +371,7 @@ export default function DashboardPage() {
               value={selectedCampaignId}
               onChange={(event) => setSelectedCampaignId(event.target.value)}
             >
-              <option value="ALL">Todas las campanas</option>
+              <option value="ALL">Todas las campañas</option>
               {campaignOptions.map((campaign) => (
                 <option key={campaign.id} value={campaign.id}>
                   {campaign.name}
@@ -417,7 +417,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold">
               {selectedCampaignName
                 ? `Tendencia diaria: ${selectedCampaignName}`
-                : `Tendencia por campana en ${selectedYear}`}
+                : `Tendencia por campaña en ${selectedYear}`}
             </h2>
           </div>
 
@@ -435,14 +435,14 @@ export default function DashboardPage() {
         <Panel delay={430}>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Ultimos cobros</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Últimos cobros</p>
               <h2 className="text-xl font-semibold">Movimientos recientes</h2>
             </div>
             <ListOrdered className="h-5 w-5 text-[var(--foreground-muted)]" />
           </div>
 
           {latestPayments.length === 0 ? (
-            <p className="text-sm text-[var(--foreground-muted)]">Todavia no hay cobros registrados.</p>
+            <p className="text-sm text-[var(--foreground-muted)]">Todavía no hay cobros registrados.</p>
           ) : (
             <ul className="space-y-2">
               {latestPayments.slice(0, 5).map((payment) => (
@@ -453,7 +453,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-1 flex items-center justify-between text-xs text-[var(--foreground-muted)]">
                     <span>{new Date(payment.date).toLocaleDateString("es-PE")}</span>
-                    <span>{payment.method ?? "Sin metodo"}</span>
+                    <span>{payment.method ?? "Sin método"}</span>
                   </div>
                 </li>
               ))}
@@ -479,7 +479,7 @@ export default function DashboardPage() {
                   <tr>
                     <th className="pb-2 font-semibold">Cliente</th>
                     <th className="pb-2 font-semibold">Deuda</th>
-                    <th className="pb-2 font-semibold">Campanas</th>
+                    <th className="pb-2 font-semibold">Campañas</th>
                     <th className="pb-2 font-semibold">Riesgo</th>
                   </tr>
                 </thead>

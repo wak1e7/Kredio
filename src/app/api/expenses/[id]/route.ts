@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -59,7 +59,7 @@ export async function PATCH(
     }
 
     if (!campaign) {
-      return NextResponse.json({ error: "Campana no encontrada para este negocio." }, { status: 404 });
+      return NextResponse.json({ error: "Campaña no encontrada para este negocio." }, { status: 404 });
     }
 
     const expense = await prisma.expense.update({
@@ -87,7 +87,7 @@ export async function PATCH(
         id: expense.id,
         expenseDate: expense.expenseDate,
         campaignId: expense.campaignId,
-        campaignName: expense.campaign?.name ?? "Sin campana",
+        campaignName: expense.campaign?.name ?? "Sin campaña",
         concept: expense.concept,
         amount: Number(expense.amount.toString()),
         notes: expense.notes,
@@ -107,3 +107,4 @@ export async function PATCH(
     );
   }
 }
+

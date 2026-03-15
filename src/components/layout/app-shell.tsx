@@ -47,7 +47,7 @@ const SESSION_MARKER_KEY = "kredio.active-browser-session";
 const mainItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Clientes", href: "/clientes", icon: Users },
-  { label: "Campanas", href: "/campanas", icon: Target },
+  { label: "Campañas", href: "/campanas", icon: Target },
   { label: "Compras", href: "/compras", icon: Package },
   { label: "Pagos", href: "/pagos", icon: HandCoins },
   { label: "Gastos", href: "/gastos", icon: ReceiptText },
@@ -58,7 +58,7 @@ const toolItems: NavItem[] = [
 ];
 
 const supportItems: NavItem[] = [
-  { label: "Configuracion", href: "/configuracion", icon: Settings },
+  { label: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
 function NavSection({
@@ -271,7 +271,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <div>
               <p className="font-semibold leading-5">Kredio</p>
-              <p className="text-xs text-[var(--foreground-muted)]">Control de credito</p>
+              <p className="text-xs text-[var(--foreground-muted)]">Control de crédito</p>
             </div>
           </div>
 
@@ -308,7 +308,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <div className="border-b border-[var(--border)] px-3 py-2">
                       <p className="text-sm font-semibold text-[var(--foreground)]">Notificaciones</p>
                       <p className="text-xs text-[var(--foreground-muted)]">
-                        Recordatorios de clientes con 3 o mas campanas pendientes.
+                        Recordatorios de clientes con 3 o más campañas pendientes.
                       </p>
                     </div>
                     <div className="max-h-80 overflow-y-auto py-2">
@@ -327,7 +327,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                             <p className="text-sm font-semibold text-[var(--foreground)]">{notification.title}</p>
                             <p className="mt-1 text-sm text-[var(--foreground-muted)]">{notification.message}</p>
                             <div className="mt-2 flex items-center justify-between text-xs text-[var(--foreground-muted)]">
-                              <span>{notification.pendingCampaigns} campanas sin pagar</span>
+                              <span>{notification.pendingCampaigns} campañas sin pagar</span>
                               <span>{currencyFormatter.format(notification.totalDebt)}</span>
                             </div>
                           </Link>
@@ -377,7 +377,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       className="flex h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-[var(--foreground-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <LogOut className="h-4 w-4" />
-                      {isSigningOut ? "Saliendo..." : "Cerrar sesion"}
+                      {isSigningOut ? "Saliendo..." : "Cerrar sesión"}
                     </button>
                   </div>
                 ) : null}

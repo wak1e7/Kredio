@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -61,7 +61,7 @@ export async function GET() {
           pendingCampaigns,
           totalDebt: Number(totalDebt.toFixed(2)),
           title: "Recordatorio de cobranza",
-          message: `${customer.fullName} acumula ${pendingCampaigns} campanas pendientes.`,
+          message: `${customer.fullName} acumula ${pendingCampaigns} campañas pendientes.`,
         };
       })
       .filter((item) => item.pendingCampaigns > 2)
@@ -88,3 +88,4 @@ export async function GET() {
     );
   }
 }
+

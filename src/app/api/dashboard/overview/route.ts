@@ -1,4 +1,4 @@
-import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         : null;
 
     if (campaignIdParam && campaignIdParam !== "ALL" && !selectedCampaign) {
-      return NextResponse.json({ error: "Campana no encontrada para este ano." }, { status: 404 });
+      return NextResponse.json({ error: "Campaña no encontrada para este año." }, { status: 404 });
     }
 
     const campaignScopeIds = selectedCampaign ? [selectedCampaign.id] : campaignOptions.map((campaign) => campaign.id);
@@ -394,3 +394,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

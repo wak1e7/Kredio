@@ -15,7 +15,7 @@ const jetBrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Kredio",
-  description: "Gestion de clientes, campanas, compras y pagos para ventas a credito",
+  description: "Gestión de clientes, campañas, compras y pagos para ventas a crédito",
   icons: {
     icon: "/kredio-icon.svg",
     shortcut: "/kredio-icon.svg",

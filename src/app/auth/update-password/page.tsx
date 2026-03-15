@@ -18,12 +18,12 @@ export default function UpdatePasswordPage() {
     setError(null);
 
     if (password.length < 6) {
-      setError("La contrasena debe tener al menos 6 caracteres.");
+      setError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Las contrasenas no coinciden.");
+      setError("Las contraseñas no coinciden.");
       return;
     }
 
@@ -33,7 +33,7 @@ export default function UpdatePasswordPage() {
     setIsLoading(false);
 
     if (updateError) {
-      setError("No se pudo actualizar la contrasena.");
+      setError("No se pudo actualizar la contraseña.");
       return;
     }
 
@@ -44,13 +44,13 @@ export default function UpdatePasswordPage() {
   return (
     <div className="kredio-bg flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md animate-fade-up rounded-3xl border bg-[var(--surface)] p-6 shadow-[0_2px_12px_rgba(14,30,55,0.04)] md:p-7">
-        <h1 className="text-2xl font-semibold">Nueva contrasena</h1>
-        <p className="mt-1 text-sm text-[var(--foreground-muted)]">Define tu nueva contrasena para recuperar el acceso.</p>
+        <h1 className="text-2xl font-semibold">Nueva contraseña</h1>
+        <p className="mt-1 text-sm text-[var(--foreground-muted)]">Define tu nueva contraseña para recuperar el acceso.</p>
 
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <input
             className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-            placeholder="Nueva contrasena"
+            placeholder="Nueva contraseña"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -58,7 +58,7 @@ export default function UpdatePasswordPage() {
           />
           <input
             className="h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-            placeholder="Confirmar contrasena"
+            placeholder="Confirmar contraseña"
             type="password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
@@ -72,7 +72,7 @@ export default function UpdatePasswordPage() {
             disabled={isLoading}
             className="h-10 w-full rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading ? "Actualizando..." : "Actualizar contrasena"}
+            {isLoading ? "Actualizando..." : "Actualizar contraseña"}
           </button>
         </form>
       </div>

@@ -340,9 +340,9 @@ export async function GET(
     const accountInfoRows = [
       { label: "REGISTRO", value: formatDate(statementData.customer.createdAt) },
       { label: "DOCUMENTO", value: statementData.customer.documentId ?? "-" },
-      { label: "TELEFONO", value: statementData.customer.phone || "-" },
+      { label: "TELÉFONO", value: statementData.customer.phone || "-" },
       { label: "ESTADO", value: statementData.customer.status === "ACTIVE" ? "ACTIVO" : "INACTIVO" },
-      { label: "DIRECCION", value: statementData.customer.address ?? "-" },
+      { label: "DIRECCIÓN", value: statementData.customer.address ?? "-" },
     ];
 
     const financialLeftRows = [
@@ -361,7 +361,7 @@ export async function GET(
 
     const leftTextLines = [
       statementData.customer.fullName.toUpperCase(),
-      statementData.customer.address?.toUpperCase() ?? "SIN DIRECCION REGISTRADA",
+      statementData.customer.address?.toUpperCase() ?? "SIN DIRECCIÓN REGISTRADA",
       statementData.customer.phone ? `TEL. ${statementData.customer.phone}` : "",
       statementData.customer.documentId ? `DOC. ${statementData.customer.documentId}` : "",
     ].filter(Boolean);

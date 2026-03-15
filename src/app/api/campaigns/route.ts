@@ -1,4 +1,4 @@
-import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { CampaignStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo listar campanas.",
+        error: "No se pudo listar campañas.",
         detail: error instanceof Error ? error.message : "Error desconocido",
       },
       { status: 500 },
@@ -132,10 +132,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: "No se pudo crear la campana.",
+        error: "No se pudo crear la campaña.",
         detail: error instanceof Error ? error.message : "Error desconocido",
       },
       { status: 500 },
     );
   }
 }
+

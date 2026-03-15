@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { CampaignStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -52,7 +52,7 @@ export async function PATCH(
     });
 
     if (!campaign) {
-      return NextResponse.json({ error: "Campana no encontrada." }, { status: 404 });
+      return NextResponse.json({ error: "Campaña no encontrada." }, { status: 404 });
     }
 
     if (payload.status && campaign.status === payload.status) {
@@ -60,8 +60,8 @@ export async function PATCH(
         {
           error:
             payload.status === CampaignStatus.CLOSED
-              ? "La campana ya esta cerrada."
-              : "La campana ya esta activa.",
+              ? "La campaña ya está cerrada."
+              : "La campaña ya está activa.",
         },
         { status: 400 },
       );
@@ -107,10 +107,11 @@ export async function PATCH(
 
     return NextResponse.json(
       {
-        error: "No se pudo actualizar la campana.",
+        error: "No se pudo actualizar la campaña.",
         detail: error instanceof Error ? error.message : "Error desconocido",
       },
       { status: 500 },
     );
   }
 }
+

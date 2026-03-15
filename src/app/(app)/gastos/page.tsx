@@ -3,7 +3,7 @@
 import { PageHeading } from "@/components/ui/page-heading";
 import { Panel } from "@/components/ui/panel";
 import { Plus } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type ExpenseRow = {
   id: string;
@@ -40,6 +40,7 @@ const EXPENSES_PER_PAGE = 10;
 export default function GastosPage() {
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
   const [campaignId, setCampaignId] = useState("");
+  const [campaignFilter, setCampaignFilter] = useState("all");
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -110,7 +111,7 @@ export default function GastosPage() {
 
     const parsedAmount = Number(amount);
     if (!campaignId || !concept.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Completa campana, concepto y monto correctamente.");
+      setError("Completa la campaña, el concepto y el monto correctamente.");
       return;
     }
 
@@ -141,8 +142,16 @@ export default function GastosPage() {
     await loadExpenses(false);
   }
 
-  const totalPages = Math.max(1, Math.ceil(expenses.length / EXPENSES_PER_PAGE));
-  const paginatedExpenses = expenses.slice(
+  const filteredExpenses = useMemo(() => {
+    if (campaignFilter === "all") {
+      return expenses;
+    }
+
+    return expenses.filter((expense) => expense.campaignId === campaignFilter);
+  }, [campaignFilter, expenses]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / EXPENSES_PER_PAGE));
+  const paginatedExpenses = filteredExpenses.slice(
     (currentPage - 1) * EXPENSES_PER_PAGE,
     currentPage * EXPENSES_PER_PAGE,
   );
@@ -163,7 +172,7 @@ export default function GastosPage() {
       <PageHeading
         overline="Registro general"
         title="Gastos adicionales"
-        description="Registra gastos adicionales y asignalos a la campana correspondiente."
+        description="Registra gastos adicionales y asígnalos a la campaña correspondiente."
         actions={
           <button
             type="button"
@@ -180,7 +189,7 @@ export default function GastosPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white"
           >
             <Plus className="h-4 w-4" />
-            {showCreateForm ? "Cerrar" : "Nuevo gasto"}
+            {showCreateForm ? "Cerrar formulario" : "Nuevo gasto"}
           </button>
         }
       />
@@ -196,7 +205,7 @@ export default function GastosPage() {
               value={campaignId}
               onChange={(event) => setCampaignId(event.target.value)}
             >
-              <option value="">Seleccionar campana</option>
+                <option value="">Seleccionar campaña</option>
               {campaignOptions.map((campaign) => (
                 <option key={campaign.id} value={campaign.id}>
                   {campaign.name}
@@ -219,7 +228,7 @@ export default function GastosPage() {
             />
             <textarea
               className="min-h-24 rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm md:col-span-2"
-              placeholder="Observacion (opcional)"
+                placeholder="Observación (opcional)"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
             />
@@ -240,7 +249,7 @@ export default function GastosPage() {
                 }}
                 className="h-10 rounded-xl border text-sm font-semibold md:col-span-2"
               >
-                Cancelar edicion
+                Cancelar edición
               </button>
             ) : null}
           </form>
@@ -252,23 +261,44 @@ export default function GastosPage() {
         </Panel>
       ) : null}
 
+      <Panel delay={260}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="md:col-span-2" />
+          <select
+            className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
+            value={campaignFilter}
+            onChange={(event) => {
+              setCampaignFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Todas las campañas</option>
+            {campaignOptions.map((campaign) => (
+              <option key={campaign.id} value={campaign.id}>
+                {campaign.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Panel>
+
       <Panel delay={300}>
         <h2 className="text-lg font-semibold">Historial de gastos</h2>
         {isLoading ? (
           <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando gastos...</p>
-        ) : expenses.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay gastos registrados.</p>
+        ) : filteredExpenses.length === 0 ? (
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay gastos para mostrar con el filtro actual.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 <tr>
                   <th className="pb-2 font-semibold">Fecha</th>
-                  <th className="pb-2 font-semibold">Campana</th>
+                  <th className="pb-2 font-semibold">Campaña</th>
                   <th className="pb-2 font-semibold">Concepto</th>
                   <th className="pb-2 font-semibold">Monto</th>
-                  <th className="pb-2 font-semibold">Observacion</th>
-                  <th className="pb-2 font-semibold">Accion</th>
+                  <th className="pb-2 font-semibold">Observación</th>
+                  <th className="pb-2 font-semibold">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,7 +327,7 @@ export default function GastosPage() {
             {totalPages > 1 ? (
               <div className="mt-4 flex items-center justify-between gap-3">
                 <p className="text-sm text-[var(--foreground-muted)]">
-                  Pagina {currentPage} de {totalPages}
+                  Página {currentPage} de {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
                   <button

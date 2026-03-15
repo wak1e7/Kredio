@@ -1,4 +1,4 @@
-import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -352,7 +352,7 @@ export async function GET(request: NextRequest) {
         expensesHistory: scopedExpenses.map((expense) => ({
           id: expense.id,
           expenseDate: expense.expenseDate,
-          campaignName: expense.campaign?.name ?? "Sin campana",
+          campaignName: expense.campaign?.name ?? "Sin campaña",
           concept: expense.concept,
           amount: Number(expense.amount.toString()),
           notes: expense.notes,
@@ -374,3 +374,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

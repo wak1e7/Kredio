@@ -1,4 +1,4 @@
-import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         id: expense.id,
         expenseDate: expense.expenseDate,
         campaignId: expense.campaignId,
-        campaignName: expense.campaign?.name ?? "Sin campana",
+        campaignName: expense.campaign?.name ?? "Sin campaña",
         concept: expense.concept,
         amount: Number(expense.amount.toString()),
         notes: expense.notes,
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!campaign) {
-      return NextResponse.json({ error: "Campana no encontrada para este negocio." }, { status: 404 });
+      return NextResponse.json({ error: "Campaña no encontrada para este negocio." }, { status: 404 });
     }
 
     const expense = await prisma.expense.create({
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
           id: expense.id,
           expenseDate: expense.expenseDate,
           campaignId: expense.campaignId,
-          campaignName: expense.campaign?.name ?? "Sin campana",
+          campaignName: expense.campaign?.name ?? "Sin campaña",
           concept: expense.concept,
           amount: Number(expense.amount.toString()),
           notes: expense.notes,
@@ -177,3 +177,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

@@ -1,13 +1,15 @@
-"use client";
+﻿"use client";
 
 import { PageHeading } from "@/components/ui/page-heading";
 import { Panel } from "@/components/ui/panel";
-import { Plus } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { Plus, Search } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type CustomerOption = { id: string; fullName: string };
+type CampaignOption = { id: string; name: string };
 
 type PaymentApplication = {
+  campaignId: string;
   campaignName: string;
   appliedAmount: number;
 };
@@ -41,6 +43,7 @@ function toDateInputValue(date: Date) {
 
 export default function PagosPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,6 +53,8 @@ export default function PagosPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [latestAllocation, setLatestAllocation] = useState<AllocationSummary | null>(null);
+  const [query, setQuery] = useState("");
+  const [campaignFilter, setCampaignFilter] = useState("all");
 
   const [customerId, setCustomerId] = useState("");
   const [paymentDate, setPaymentDate] = useState(toDateInputValue(new Date()));
@@ -72,12 +77,13 @@ export default function PagosPage() {
     let hasRetriedSeed = false;
 
     while (true) {
-      const [customersRes, paymentsRes] = await Promise.all([
+      const [customersRes, campaignsRes, paymentsRes] = await Promise.all([
         fetch("/api/customers?status=ACTIVE&debtMode=with", { cache: "no-store" }),
+        fetch("/api/campaigns", { cache: "no-store" }),
         fetch("/api/payments", { cache: "no-store" }),
       ]);
 
-      if ((customersRes.status === 404 || paymentsRes.status === 404) && retrySeed && !hasRetriedSeed) {
+      if ((customersRes.status === 404 || campaignsRes.status === 404 || paymentsRes.status === 404) && retrySeed && !hasRetriedSeed) {
         hasRetriedSeed = true;
         await fetch("/api/setup/dev-seed", { method: "POST", body: JSON.stringify({}) });
         continue;
@@ -87,16 +93,21 @@ export default function PagosPage() {
         data?: Array<{ id: string; fullName: string }>;
         error?: string;
       };
+      const campaignsJson = (await campaignsRes.json()) as {
+        data?: CampaignOption[];
+        error?: string;
+      };
       const paymentsJson = (await paymentsRes.json()) as { data?: PaymentRow[]; error?: string };
 
-      if (!customersRes.ok || !paymentsRes.ok) {
-        setError(customersJson.error ?? paymentsJson.error ?? "No se pudo cargar pagos.");
+      if (!customersRes.ok || !campaignsRes.ok || !paymentsRes.ok) {
+        setError(customersJson.error ?? campaignsJson.error ?? paymentsJson.error ?? "No se pudo cargar pagos.");
         setIsLoading(false);
         return;
       }
 
       const customerData = customersJson.data ?? [];
       setCustomers(customerData);
+      setCampaignOptions(campaignsJson.data ?? []);
       setPayments(paymentsJson.data ?? []);
       setCurrentPage(1);
 
@@ -165,8 +176,25 @@ export default function PagosPage() {
     await loadData(false);
   }
 
-  const totalPages = Math.max(1, Math.ceil(payments.length / PAYMENTS_PER_PAGE));
-  const paginatedPayments = payments.slice(
+  const filteredPayments = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return payments.filter((payment) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        payment.customerName.toLowerCase().includes(normalizedQuery) ||
+        (payment.method ?? "").toLowerCase().includes(normalizedQuery);
+
+      const matchesCampaign =
+        campaignFilter === "all" ||
+        payment.applications.some((application) => application.campaignId === campaignFilter);
+
+      return matchesQuery && matchesCampaign;
+    });
+  }, [campaignFilter, payments, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / PAYMENTS_PER_PAGE));
+  const paginatedPayments = filteredPayments.slice(
     (currentPage - 1) * PAYMENTS_PER_PAGE,
     currentPage * PAYMENTS_PER_PAGE,
   );
@@ -188,7 +216,7 @@ export default function PagosPage() {
       <PageHeading
         overline="Registro de pagos"
         title="Pagos de clientes"
-        description="Alta de pagos con aplicacion automatica a deudas mas antiguas."
+        description="Registra pagos y aplícalos automáticamente a las deudas más antiguas."
         actions={
           <button
             type="button"
@@ -205,7 +233,7 @@ export default function PagosPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white"
           >
             <Plus className="h-4 w-4" />
-            {showCreateForm ? "Cerrar" : "Nuevo pago"}
+            {showCreateForm ? "Cerrar formulario" : "Nuevo pago"}
           </button>
         }
       />
@@ -258,7 +286,7 @@ export default function PagosPage() {
 
               <textarea
                 className="min-h-24 rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm"
-                placeholder="Observacion (opcional)"
+                placeholder="Observación (opcional)"
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
               />
@@ -280,30 +308,30 @@ export default function PagosPage() {
                   }}
                   className="h-10 rounded-xl border text-sm font-semibold"
                 >
-                  Cancelar edicion
+                  Cancelar edición
                 </button>
               ) : null}
             </form>
           </Panel>
 
           <Panel delay={240}>
-            <h2 className="text-lg font-semibold">Regla de aplicacion automatica</h2>
+            <h2 className="text-lg font-semibold">Aplicación automática</h2>
             <div className="mt-3 space-y-3 text-sm">
               <div className="rounded-2xl border bg-[var(--surface)] p-3">
-                <p className="font-semibold">Regla del sistema</p>
+                <p className="font-semibold">Cómo funciona</p>
                 <p className="mt-1 text-[var(--foreground-muted)]">
-                  El pago se aplica primero a las campanas mas antiguas con saldo pendiente.
+                  El pago se aplica primero a las campañas más antiguas con saldo pendiente.
                 </p>
               </div>
               <div className="rounded-2xl border bg-[var(--surface)] p-3">
-                <p className="font-semibold">Resultado del ultimo pago</p>
+                <p className="font-semibold">Resultado del último pago</p>
                 {latestAllocation ? (
                   <p className="mt-1 text-[var(--foreground-muted)]">
                     Aplicaciones: {latestAllocation.allocations.length} · Sin aplicar:{" "}
                     {currencyFormatter.format(latestAllocation.unappliedAmount)}
                   </p>
                 ) : (
-                  <p className="mt-1 text-[var(--foreground-muted)]">Aun no registras pagos en esta sesion.</p>
+                  <p className="mt-1 text-[var(--foreground-muted)]">Aún no registras pagos en esta sesión.</p>
                 )}
               </div>
             </div>
@@ -318,12 +346,47 @@ export default function PagosPage() {
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p> : null}
 
+      <Panel delay={280}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="md:col-span-2">
+            <span className="sr-only">Buscar pago</span>
+            <span className="flex items-center gap-2 rounded-xl border bg-[var(--surface)] px-3 py-2">
+              <Search className="h-4 w-4 text-[var(--foreground-muted)]" />
+              <input
+                placeholder="Buscar por cliente o método..."
+                className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--foreground-muted)]"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </span>
+          </label>
+          <select
+            className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm text-[var(--foreground-muted)]"
+            value={campaignFilter}
+            onChange={(event) => {
+              setCampaignFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Todas las campañas</option>
+            {campaignOptions.map((campaign) => (
+              <option key={campaign.id} value={campaign.id}>
+                {campaign.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Panel>
+
       <Panel delay={300}>
         <h2 className="text-lg font-semibold">Historial de pagos</h2>
         {isLoading ? (
           <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando pagos...</p>
-        ) : payments.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay pagos registrados.</p>
+        ) : filteredPayments.length === 0 ? (
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay pagos para mostrar con el filtro actual.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -332,9 +395,9 @@ export default function PagosPage() {
                   <th className="pb-2 font-semibold">Fecha</th>
                   <th className="pb-2 font-semibold">Cliente</th>
                   <th className="pb-2 font-semibold">Monto</th>
-                  <th className="pb-2 font-semibold">Metodo</th>
-                  <th className="pb-2 font-semibold">Campanas afectadas</th>
-                  <th className="pb-2 font-semibold">Accion</th>
+                  <th className="pb-2 font-semibold">Método</th>
+                  <th className="pb-2 font-semibold">Campañas afectadas</th>
+                  <th className="pb-2 font-semibold">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -367,7 +430,7 @@ export default function PagosPage() {
             {totalPages > 1 ? (
               <div className="mt-4 flex items-center justify-between gap-3">
                 <p className="text-sm text-[var(--foreground-muted)]">
-                  Pagina {currentPage} de {totalPages}
+                  Página {currentPage} de {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -395,3 +458,4 @@ export default function PagosPage() {
     </div>
   );
 }
+

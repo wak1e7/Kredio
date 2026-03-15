@@ -62,7 +62,7 @@ export default function CampanasPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [campaignName, setCampaignName] = useState("Campana actual");
+  const [campaignName, setCampaignName] = useState("Campaña actual");
   const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [startDate, setStartDate] = useState<string>(toDateInputValue(new Date()));
@@ -70,7 +70,7 @@ export default function CampanasPage() {
 
   function resetForm() {
     setEditingCampaignId(null);
-    setCampaignName("Campana actual");
+    setCampaignName("Campaña actual");
     setMonth(new Date().getMonth() + 1);
     setYear(new Date().getFullYear());
     setStartDate(toDateInputValue(new Date()));
@@ -100,7 +100,7 @@ export default function CampanasPage() {
           continue;
         }
 
-        setError(json.error ?? "No se pudo cargar campanas.");
+        setError(json.error ?? "No se pudieron cargar las campañas.");
         setIsLoading(false);
         return;
       }
@@ -144,7 +144,7 @@ export default function CampanasPage() {
     setIsSaving(false);
 
     if (!response.ok) {
-      setError(json.error ?? `No se pudo ${isEditing ? "actualizar" : "crear"} la campana.`);
+      setError(json.error ?? `No se pudo ${isEditing ? "actualizar" : "crear"} la campaña.`);
       return;
     }
 
@@ -180,7 +180,7 @@ export default function CampanasPage() {
     setUpdatingCampaignId(null);
 
     if (!response.ok) {
-      setError(json.error ?? "No se pudo actualizar la campana.");
+      setError(json.error ?? "No se pudo actualizar la campaña.");
       return;
     }
 
@@ -196,8 +196,8 @@ export default function CampanasPage() {
   return (
     <div className="space-y-4">
       <PageHeading
-        overline="Gestion de campanas"
-        title="Campanas mensuales"
+        overline="Gestión de campañas"
+        title="Campañas mensuales"
         description="Control de ventas, cobros y deuda por periodo comercial."
         actions={
           <button
@@ -215,18 +215,18 @@ export default function CampanasPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white"
           >
             <Plus className="h-4 w-4" />
-            {showCreateForm ? "Cerrar" : "Nueva campana"}
+            {showCreateForm ? "Cerrar formulario" : "Nueva campaña"}
           </button>
         }
       />
 
       {showCreateForm ? (
         <Panel delay={150}>
-          <h2 className="text-lg font-semibold">{editingCampaignId ? "Editar campana" : "Crear campana"}</h2>
+          <h2 className="text-lg font-semibold">{editingCampaignId ? "Editar campaña" : "Crear campaña"}</h2>
           <form className="mt-3 grid gap-3 md:grid-cols-2" onSubmit={onSubmitCampaign}>
             <input
               className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm md:col-span-2"
-              placeholder="Nombre de campana *"
+              placeholder="Nombre de la campaña *"
               value={campaignName}
               onChange={(event) => setCampaignName(event.target.value)}
               required
@@ -280,7 +280,7 @@ export default function CampanasPage() {
               disabled={isSaving}
               className="h-10 rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 md:w-fit"
             >
-              {isSaving ? "Guardando..." : editingCampaignId ? "Actualizar campana" : "Guardar campana"}
+              {isSaving ? "Guardando..." : editingCampaignId ? "Actualizar campaña" : "Guardar campaña"}
             </button>
             {editingCampaignId ? (
               <button
@@ -291,7 +291,7 @@ export default function CampanasPage() {
                 }}
                 className="h-10 rounded-xl border px-4 text-sm font-semibold md:col-span-2 md:w-fit"
               >
-                Cancelar edicion
+                Cancelar edición
               </button>
             ) : null}
           </form>
@@ -318,15 +318,15 @@ export default function CampanasPage() {
 
       <Panel delay={220}>
         {isLoading ? (
-          <p className="text-sm text-[var(--foreground-muted)]">Cargando campanas...</p>
+          <p className="text-sm text-[var(--foreground-muted)]">Cargando campañas...</p>
         ) : campaigns.length === 0 ? (
-          <p className="text-sm text-[var(--foreground-muted)]">No hay campanas para mostrar.</p>
+          <p className="text-sm text-[var(--foreground-muted)]">No hay campañas para mostrar.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 <tr>
-                  <th className="pb-2 font-semibold">Campana</th>
+                  <th className="pb-2 font-semibold">Campaña</th>
                   <th className="pb-2 font-semibold">Periodo</th>
                   <th className="pb-2 font-semibold">Inicio</th>
                   <th className="pb-2 font-semibold">Cierre</th>
@@ -388,8 +388,8 @@ export default function CampanasPage() {
                           {updatingCampaignId === campaign.id
                             ? "Actualizando..."
                             : campaign.status === "OPEN"
-                              ? "Cerrar campana"
-                              : "Reabrir campana"}
+                              ? "Cerrar campaña"
+                              : "Reabrir campaña"}
                         </button>
                       </div>
                     </td>
@@ -400,7 +400,7 @@ export default function CampanasPage() {
             {totalPages > 1 ? (
               <div className="mt-4 flex items-center justify-between gap-3">
                 <p className="text-sm text-[var(--foreground-muted)]">
-                  Pagina {currentPage} de {totalPages}
+                  Página {currentPage} de {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
