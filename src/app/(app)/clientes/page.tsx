@@ -29,6 +29,7 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 2,
 });
 const CUSTOMERS_PER_PAGE = 20;
+const nameSorter = new Intl.Collator("es", { sensitivity: "base", numeric: true });
 
 export default function ClientesPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
@@ -94,7 +95,11 @@ export default function ClientesPage() {
       return;
     }
 
-    setCustomers(json.data ?? []);
+    const sortedCustomers = [...(json.data ?? [])].sort((left, right) =>
+      nameSorter.compare(left.fullName, right.fullName),
+    );
+
+    setCustomers(sortedCustomers);
     setCurrentPage(1);
     setIsLoading(false);
   }, []);

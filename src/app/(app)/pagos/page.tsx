@@ -38,7 +38,6 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 2,
 });
 const PAYMENTS_PER_PAGE = 10;
-const EMPTY_CLIENT_OPTION = "__empty__";
 
 function toDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -46,6 +45,15 @@ function toDateInputValue(date: Date) {
 
 function toPaymentDateIso(value: string) {
   return new Date(`${value}T12:00:00`).toISOString();
+}
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 export default function PagosPage() {
@@ -68,15 +76,24 @@ export default function PagosPage() {
   const [paymentDate, setPaymentDate] = useState(toDateInputValue(new Date()));
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("Efectivo");
-  const [notes, setNotes] = useState("");
+
+  const syncCustomerSelection = useCallback(
+    (value: string) => {
+      setCustomerSearch(value);
+      const normalizedValue = normalizeText(value);
+      const matchedCustomer = customers.find((customer) => normalizeText(customer.fullName) === normalizedValue);
+      setCustomerId(matchedCustomer?.id ?? "");
+    },
+    [customers],
+  );
 
   function resetForm() {
     setEditingPaymentId(null);
+    setCustomerId("");
     setCustomerSearch("");
     setPaymentDate(toDateInputValue(new Date()));
     setAmount("");
     setMethod("Efectivo");
-    setNotes("");
   }
 
   const loadData = useCallback(async () => {
@@ -112,14 +129,8 @@ export default function PagosPage() {
     setCampaignOptions(campaignsJson.data ?? []);
     setPayments(paymentsJson.data ?? []);
     setCurrentPage(1);
-
-    if (!customerId && customerData[0]) {
-      setCustomerId(customerData[0].id);
-      setCustomerSearch(customerData[0].fullName);
-    }
-
     setIsLoading(false);
-  }, [customerId]);
+  }, []);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -155,7 +166,6 @@ export default function PagosPage() {
         paymentDate: toPaymentDateIso(paymentDate),
         amount: parsedAmount,
         method,
-        notes: notes || undefined,
       }),
     });
 
@@ -216,7 +226,6 @@ export default function PagosPage() {
     setPaymentDate(toDateInputValue(new Date(payment.paymentDate)));
     setAmount(String(payment.amount));
     setMethod(payment.method ?? "Efectivo");
-    setNotes(payment.notes ?? "");
     setError(null);
     setSuccessMessage(null);
     setShowCreateForm(true);
@@ -258,33 +267,18 @@ export default function PagosPage() {
                 <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 1</p>
                 <p className="mt-1 font-semibold">Seleccionar cliente</p>
                 <input
+                  list="payment-customers"
                   className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                  placeholder="Buscar cliente por nombre..."
+                  placeholder="Buscar y seleccionar cliente..."
                   value={customerSearch}
-                  onChange={(event) => setCustomerSearch(event.target.value)}
+                  onChange={(event) => syncCustomerSelection(event.target.value)}
+                  required
                 />
-                <select
-                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                  value={customerId || EMPTY_CLIENT_OPTION}
-                  onChange={(event) => {
-                    const nextCustomerId = event.target.value === EMPTY_CLIENT_OPTION ? "" : event.target.value;
-                    setCustomerId(nextCustomerId);
-
-                    const selectedCustomer = customers.find((customer) => customer.id === nextCustomerId);
-                    if (selectedCustomer) {
-                      setCustomerSearch(selectedCustomer.fullName);
-                    }
-                  }}
-                >
-                  <option value={EMPTY_CLIENT_OPTION}>
-                    {filteredCustomers.length === 0 ? "No se encontraron clientes" : "Seleccionar cliente"}
-                  </option>
+                <datalist id="payment-customers">
                   {filteredCustomers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.fullName}
-                    </option>
+                    <option key={customer.id} value={customer.fullName} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div className="rounded-2xl border bg-[var(--surface)] p-3">
@@ -325,21 +319,10 @@ export default function PagosPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border bg-[var(--surface)] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 4</p>
-                <p className="mt-1 font-semibold">Agregar observación</p>
-                <textarea
-                  className="mt-2 min-h-24 rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm"
-                  placeholder="Observación (opcional)"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                />
-              </div>
-
               <button
                 type="submit"
                 disabled={isSaving}
-                className="h-10 rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:opacity-60"
+                className="h-10 w-full rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:opacity-60"
               >
                 {isSaving ? "Guardando..." : editingPaymentId ? "Actualizar pago" : "Registrar pago"}
               </button>
@@ -351,7 +334,7 @@ export default function PagosPage() {
                     setSuccessMessage(null);
                     setShowCreateForm(false);
                   }}
-                  className="h-10 rounded-xl border text-sm font-semibold"
+                  className="h-10 w-full rounded-xl border text-sm font-semibold"
                 >
                   Cancelar edición
                 </button>
@@ -443,16 +426,12 @@ export default function PagosPage() {
               <tbody>
                 {paginatedPayments.map((payment) => (
                   <tr key={payment.id} className="border-t border-[var(--border)]/80">
-                    <td className="py-3 text-[var(--foreground-muted)]">
-                      {new Date(payment.paymentDate).toLocaleDateString("es-PE")}
-                    </td>
+                    <td className="py-3 text-[var(--foreground-muted)]">{new Date(payment.paymentDate).toLocaleDateString("es-PE")}</td>
                     <td className="py-3 font-medium">{payment.customerName}</td>
                     <td className="py-3">{currencyFormatter.format(payment.amount)}</td>
                     <td className="py-3">{payment.method ?? "-"}</td>
                     <td className="py-3 text-[var(--foreground-muted)]">
-                      {payment.applications.length > 0
-                        ? payment.applications.map((app) => app.campaignName).join(", ")
-                        : "-"}
+                      {payment.applications.length > 0 ? payment.applications.map((app) => app.campaignName).join(", ") : "-"}
                     </td>
                     <td className="py-3">
                       <button

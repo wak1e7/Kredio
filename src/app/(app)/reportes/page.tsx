@@ -141,6 +141,15 @@ export default function ReportesPage() {
       ? campaignOptions.find((campaign) => campaign.id === selectedCampaignId)?.name ?? "Campaña seleccionada"
       : null;
 
+  const exportUrl = (() => {
+    const params = new URLSearchParams();
+    params.set("year", String(selectedYear));
+    if (selectedCampaignId !== "ALL") {
+      params.set("campaignId", selectedCampaignId);
+    }
+    return `/api/reports/overview/pdf?${params.toString()}`;
+  })();
+
   return (
     <div className="space-y-4">
       <PageHeading
@@ -175,6 +184,14 @@ export default function ReportesPage() {
                 </option>
               ))}
             </select>
+            <a
+              href={exportUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-[0_16px_36px_-18px_rgba(74,58,255,0.7)] transition hover:bg-[var(--accent-strong)]"
+            >
+              Exportar PDF
+            </a>
           </div>
         }
       />

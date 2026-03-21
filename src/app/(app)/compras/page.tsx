@@ -41,7 +41,6 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
 
 const CATEGORY_OPTIONS = ["Sokso", "Footloose", "Leonisa"] as const;
 const PURCHASES_PER_PAGE = 10;
-const EMPTY_CLIENT_OPTION = "__empty__";
 
 function toDateInputValue(value: string) {
   return value.slice(0, 10);
@@ -49,6 +48,15 @@ function toDateInputValue(value: string) {
 
 function toPurchaseDateIso(value: string) {
   return new Date(`${value}T12:00:00`).toISOString();
+}
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 export default function ComprasPage() {
@@ -80,8 +88,19 @@ export default function ComprasPage() {
   const [costPrice, setCostPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
 
+  const syncCustomerSelection = useCallback(
+    (value: string) => {
+      setCustomerSearch(value);
+      const normalizedValue = normalizeText(value);
+      const matchedCustomer = customers.find((customer) => normalizeText(customer.fullName) === normalizedValue);
+      setCustomerId(matchedCustomer?.id ?? "");
+    },
+    [customers],
+  );
+
   function resetProductForm() {
     setEditingPurchaseId(null);
+    setCustomerId("");
     setCustomerSearch("");
     setPurchaseDate(new Date().toISOString().slice(0, 10));
     setCode("");
@@ -119,27 +138,13 @@ export default function ComprasPage() {
     const customerData = [...(customersJson.data ?? [])].sort((a, b) =>
       a.fullName.localeCompare(b.fullName, "es", { sensitivity: "base" }),
     );
-    const campaignData = campaignsJson.data ?? [];
-    const filterCampaignData = campaignFilterJson.data ?? [];
-    const purchaseData = purchasesJson.data ?? [];
-
     setCustomers(customerData);
-    setCampaigns(campaignData);
-    setCampaignFilterOptions(filterCampaignData);
-    setPurchases(purchaseData);
+    setCampaigns(campaignsJson.data ?? []);
+    setCampaignFilterOptions(campaignFilterJson.data ?? []);
+    setPurchases(purchasesJson.data ?? []);
     setCurrentPage(1);
-
-    if (!customerId && customerData[0]) {
-      setCustomerId(customerData[0].id);
-      setCustomerSearch(customerData[0].fullName);
-    }
-
-    if (!campaignId && campaignData[0]) {
-      setCampaignId(campaignData[0].id);
-    }
-
     setIsLoading(false);
-  }, [campaignId, customerId]);
+  }, []);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -312,33 +317,18 @@ export default function ComprasPage() {
                 <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 1</p>
                 <p className="mt-1 font-semibold">Seleccionar cliente</p>
                 <input
+                  list="purchase-customers"
                   className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                  placeholder="Buscar cliente por nombre..."
+                  placeholder="Buscar y seleccionar cliente..."
                   value={customerSearch}
-                  onChange={(event) => setCustomerSearch(event.target.value)}
+                  onChange={(event) => syncCustomerSelection(event.target.value)}
+                  required
                 />
-                <select
-                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                  value={customerId || EMPTY_CLIENT_OPTION}
-                  onChange={(event) => {
-                    const nextCustomerId = event.target.value === EMPTY_CLIENT_OPTION ? "" : event.target.value;
-                    setCustomerId(nextCustomerId);
-
-                    const selectedCustomer = customers.find((customer) => customer.id === nextCustomerId);
-                    if (selectedCustomer) {
-                      setCustomerSearch(selectedCustomer.fullName);
-                    }
-                  }}
-                >
-                  <option value={EMPTY_CLIENT_OPTION}>
-                    {filteredCustomers.length === 0 ? "No se encontraron clientes" : "Seleccionar cliente"}
-                  </option>
+                <datalist id="purchase-customers">
                   {filteredCustomers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.fullName}
-                    </option>
+                    <option key={customer.id} value={customer.fullName} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div className="rounded-2xl border bg-[var(--surface)] p-3">
@@ -374,15 +364,19 @@ export default function ComprasPage() {
                 <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 4</p>
                 <p className="mt-1 font-semibold">Agregar productos</p>
                 <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Código" value={code} onChange={(event) => setCode(event.target.value)} required />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
-                  <select className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm" value={category} onChange={(event) => setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])}>
+                  <select
+                    className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])}
+                  >
                     {CATEGORY_OPTIONS.map((option) => (
                       <option key={option} value={option}>
                         {option}
                       </option>
                     ))}
                   </select>
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Código" value={code} onChange={(event) => setCode(event.target.value)} required />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
                   <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Talla" value={size} onChange={(event) => setSize(event.target.value)} />
                   <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Color" value={color} onChange={(event) => setColor(event.target.value)} />
                   <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Cantidad" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
@@ -486,11 +480,7 @@ export default function ComprasPage() {
                         type="button"
                         onClick={() => onEditPurchase(purchase)}
                         disabled={purchase.items.length !== 1}
-                        title={
-                          purchase.items.length !== 1
-                            ? "La edición con varios productos aún no está disponible."
-                            : undefined
-                        }
+                        title={purchase.items.length !== 1 ? "La edición con varios productos aún no está disponible." : undefined}
                         className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Editar
