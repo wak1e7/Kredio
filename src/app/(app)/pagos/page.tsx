@@ -38,11 +38,14 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 2,
 });
 const PAYMENTS_PER_PAGE = 10;
-const ENYE = String.fromCharCode(241);
-const ACUTE_E = String.fromCharCode(233);
+const EMPTY_CLIENT_OPTION = "__empty__";
 
 function toDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function toPaymentDateIso(value: string) {
+  return new Date(`${value}T12:00:00`).toISOString();
 }
 
 export default function PagosPage() {
@@ -61,6 +64,7 @@ export default function PagosPage() {
   const [campaignFilter, setCampaignFilter] = useState("all");
 
   const [customerId, setCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [paymentDate, setPaymentDate] = useState(toDateInputValue(new Date()));
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("Efectivo");
@@ -68,6 +72,7 @@ export default function PagosPage() {
 
   function resetForm() {
     setEditingPaymentId(null);
+    setCustomerSearch("");
     setPaymentDate(toDateInputValue(new Date()));
     setAmount("");
     setMethod("Efectivo");
@@ -95,12 +100,14 @@ export default function PagosPage() {
     const paymentsJson = (await paymentsRes.json()) as { data?: PaymentRow[]; error?: string };
 
     if (!customersRes.ok || !campaignsRes.ok || !paymentsRes.ok) {
-      setError(customersJson.error ?? campaignsJson.error ?? paymentsJson.error ?? "No se pudo cargar pagos.");
+      setError(customersJson.error ?? campaignsJson.error ?? paymentsJson.error ?? "No se pudieron cargar los pagos.");
       setIsLoading(false);
       return;
     }
 
-    const customerData = customersJson.data ?? [];
+    const customerData = [...(customersJson.data ?? [])].sort((a, b) =>
+      a.fullName.localeCompare(b.fullName, "es", { sensitivity: "base" }),
+    );
     setCustomers(customerData);
     setCampaignOptions(campaignsJson.data ?? []);
     setPayments(paymentsJson.data ?? []);
@@ -108,6 +115,7 @@ export default function PagosPage() {
 
     if (!customerId && customerData[0]) {
       setCustomerId(customerData[0].id);
+      setCustomerSearch(customerData[0].fullName);
     }
 
     setIsLoading(false);
@@ -131,8 +139,8 @@ export default function PagosPage() {
 
     const parsedAmount = Number(amount);
 
-    if (!customerId || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Completa cliente y monto correctamente.");
+    if (!customerId || !paymentDate || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError("Completa cliente, fecha y monto correctamente.");
       return;
     }
 
@@ -144,7 +152,7 @@ export default function PagosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customerId,
-        paymentDate: new Date(`${paymentDate}T00:00:00.000Z`).toISOString(),
+        paymentDate: toPaymentDateIso(paymentDate),
         amount: parsedAmount,
         method,
         notes: notes || undefined,
@@ -186,6 +194,15 @@ export default function PagosPage() {
     });
   }, [campaignFilter, payments, query]);
 
+  const filteredCustomers = useMemo(() => {
+    const normalizedSearch = customerSearch.trim().toLowerCase();
+    if (!normalizedSearch) {
+      return customers;
+    }
+
+    return customers.filter((customer) => customer.fullName.toLowerCase().includes(normalizedSearch));
+  }, [customerSearch, customers]);
+
   const totalPages = Math.max(1, Math.ceil(filteredPayments.length / PAYMENTS_PER_PAGE));
   const paginatedPayments = filteredPayments.slice(
     (currentPage - 1) * PAYMENTS_PER_PAGE,
@@ -195,6 +212,7 @@ export default function PagosPage() {
   function onEditPayment(payment: PaymentRow) {
     setEditingPaymentId(payment.id);
     setCustomerId(payment.customerId);
+    setCustomerSearch(payment.customerName);
     setPaymentDate(toDateInputValue(new Date(payment.paymentDate)));
     setAmount(String(payment.amount));
     setMethod(payment.method ?? "Efectivo");
@@ -235,54 +253,88 @@ export default function PagosPage() {
         <section className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
           <Panel delay={180}>
             <h2 className="text-lg font-semibold">{editingPaymentId ? "Editar pago" : "Nuevo pago"}</h2>
-            <form className="mt-3 grid gap-3" onSubmit={onSubmit}>
-              <select
-                className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                value={customerId}
-                onChange={(event) => setCustomerId(event.target.value)}
-              >
-                <option value="">Seleccionar cliente</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.fullName}
+            <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 1</p>
+                <p className="mt-1 font-semibold">Seleccionar cliente</p>
+                <input
+                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                  placeholder="Buscar cliente por nombre..."
+                  value={customerSearch}
+                  onChange={(event) => setCustomerSearch(event.target.value)}
+                />
+                <select
+                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                  value={customerId || EMPTY_CLIENT_OPTION}
+                  onChange={(event) => {
+                    const nextCustomerId = event.target.value === EMPTY_CLIENT_OPTION ? "" : event.target.value;
+                    setCustomerId(nextCustomerId);
+
+                    const selectedCustomer = customers.find((customer) => customer.id === nextCustomerId);
+                    if (selectedCustomer) {
+                      setCustomerSearch(selectedCustomer.fullName);
+                    }
+                  }}
+                >
+                  <option value={EMPTY_CLIENT_OPTION}>
+                    {filteredCustomers.length === 0 ? "No se encontraron clientes" : "Seleccionar cliente"}
                   </option>
-                ))}
-              </select>
+                  {filteredCustomers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <input
-                className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                type="date"
-                value={paymentDate}
-                onChange={(event) => setPaymentDate(event.target.value)}
-              />
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 2</p>
+                <p className="mt-1 font-semibold">Seleccionar fecha de pago</p>
+                <input
+                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(event) => setPaymentDate(event.target.value)}
+                  required
+                />
+              </div>
 
-              <input
-                className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                placeholder="Monto"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                required
-              />
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 3</p>
+                <p className="mt-1 font-semibold">Registrar monto y método</p>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <input
+                    className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                    placeholder="Monto"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    required
+                  />
+                  <select
+                    className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                    value={method}
+                    onChange={(event) => setMethod(event.target.value)}
+                  >
+                    <option>Efectivo</option>
+                    <option>Transferencia</option>
+                    <option>Yape</option>
+                    <option>Plin</option>
+                    <option>Tarjeta</option>
+                    <option>Otro</option>
+                  </select>
+                </div>
+              </div>
 
-              <select
-                className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                value={method}
-                onChange={(event) => setMethod(event.target.value)}
-              >
-                <option>Efectivo</option>
-                <option>Transferencia</option>
-                <option>Yape</option>
-                <option>Plin</option>
-                <option>Tarjeta</option>
-                <option>Otro</option>
-              </select>
-
-              <textarea
-                className="min-h-24 rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm"
-                placeholder="Observación (opcional)"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-              />
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 4</p>
+                <p className="mt-1 font-semibold">Agregar observación</p>
+                <textarea
+                  className="mt-2 min-h-24 rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm"
+                  placeholder="Observación (opcional)"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                />
+              </div>
 
               <button
                 type="submit"
@@ -343,7 +395,7 @@ export default function PagosPage() {
         <ListFilters
           search={{
             label: "Buscar pago",
-            placeholder: `Buscar por cliente o m${ACUTE_E}todo...`,
+            placeholder: "Buscar por cliente o método...",
             value: query,
             onChange: (value) => {
               setQuery(value);
@@ -359,7 +411,7 @@ export default function PagosPage() {
               setCurrentPage(1);
             }}
           >
-            <option value="all">{`Todas las campa${ENYE}as`}</option>
+            <option value="all">Todas las campañas</option>
             {campaignOptions.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}
@@ -427,4 +479,3 @@ export default function PagosPage() {
     </div>
   );
 }
-

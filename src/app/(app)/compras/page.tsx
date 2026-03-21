@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ListFilters } from "@/components/ui/list-filters";
 import { PageHeading } from "@/components/ui/page-heading";
@@ -41,7 +41,15 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
 
 const CATEGORY_OPTIONS = ["Sokso", "Footloose", "Leonisa"] as const;
 const PURCHASES_PER_PAGE = 10;
-const ENYE = String.fromCharCode(241);
+const EMPTY_CLIENT_OPTION = "__empty__";
+
+function toDateInputValue(value: string) {
+  return value.slice(0, 10);
+}
+
+function toPurchaseDateIso(value: string) {
+  return new Date(`${value}T12:00:00`).toISOString();
+}
 
 export default function ComprasPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -60,7 +68,9 @@ export default function ComprasPage() {
   const [campaignFilter, setCampaignFilter] = useState("all");
 
   const [customerId, setCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [campaignId, setCampaignId] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORY_OPTIONS)[number]>("Sokso");
@@ -72,6 +82,8 @@ export default function ComprasPage() {
 
   function resetProductForm() {
     setEditingPurchaseId(null);
+    setCustomerSearch("");
+    setPurchaseDate(new Date().toISOString().slice(0, 10));
     setCode("");
     setName("");
     setCategory("Sokso");
@@ -99,12 +111,14 @@ export default function ComprasPage() {
     const purchasesJson = (await purchasesRes.json()) as { data?: PurchaseRow[]; error?: string };
 
     if (!customersRes.ok || !campaignsRes.ok || !campaignFilterRes.ok || !purchasesRes.ok) {
-      setError(customersJson.error ?? campaignsJson.error ?? campaignFilterJson.error ?? purchasesJson.error ?? "No se pudo cargar compras.");
+      setError(customersJson.error ?? campaignsJson.error ?? campaignFilterJson.error ?? purchasesJson.error ?? "No se pudieron cargar las compras.");
       setIsLoading(false);
       return;
     }
 
-    const customerData = customersJson.data ?? [];
+    const customerData = [...(customersJson.data ?? [])].sort((a, b) =>
+      a.fullName.localeCompare(b.fullName, "es", { sensitivity: "base" }),
+    );
     const campaignData = campaignsJson.data ?? [];
     const filterCampaignData = campaignFilterJson.data ?? [];
     const purchaseData = purchasesJson.data ?? [];
@@ -117,6 +131,7 @@ export default function ComprasPage() {
 
     if (!customerId && customerData[0]) {
       setCustomerId(customerData[0].id);
+      setCustomerSearch(customerData[0].fullName);
     }
 
     if (!campaignId && campaignData[0]) {
@@ -145,8 +160,8 @@ export default function ComprasPage() {
     const parsedCostPrice = Number(costPrice);
     const parsedSalePrice = Number(salePrice);
 
-    if (!customerId || !campaignId) {
-      setError("Selecciona un cliente y una campaña.");
+    if (!customerId || !campaignId || !purchaseDate) {
+      setError("Selecciona un cliente, una campaña y la fecha de compra.");
       return;
     }
 
@@ -170,6 +185,7 @@ export default function ComprasPage() {
       body: JSON.stringify({
         customerId,
         campaignId,
+        purchaseDate: toPurchaseDateIso(purchaseDate),
         items: [
           {
             code,
@@ -214,6 +230,15 @@ export default function ComprasPage() {
     });
   }, [campaignFilter, purchases, query]);
 
+  const filteredCustomers = useMemo(() => {
+    const normalizedSearch = customerSearch.trim().toLowerCase();
+    if (!normalizedSearch) {
+      return customers;
+    }
+
+    return customers.filter((customer) => customer.fullName.toLowerCase().includes(normalizedSearch));
+  }, [customerSearch, customers]);
+
   const filteredTotalPages = Math.max(1, Math.ceil(filteredPurchases.length / PURCHASES_PER_PAGE));
   const paginatedPurchases = filteredPurchases.slice(
     (currentPage - 1) * PURCHASES_PER_PAGE,
@@ -235,7 +260,9 @@ export default function ComprasPage() {
 
     setEditingPurchaseId(purchase.id);
     setCustomerId(purchase.customerId);
+    setCustomerSearch(purchase.customerName);
     setCampaignId(purchase.campaignId);
+    setPurchaseDate(toDateInputValue(purchase.purchaseDate));
     setCode(item.code);
     setName(item.name);
     setCategory((item.category as (typeof CATEGORY_OPTIONS)[number] | null) ?? "Sokso");
@@ -284,13 +311,29 @@ export default function ComprasPage() {
               <div className="rounded-2xl border bg-[var(--surface)] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 1</p>
                 <p className="mt-1 font-semibold">Seleccionar cliente</p>
+                <input
+                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                  placeholder="Buscar cliente por nombre..."
+                  value={customerSearch}
+                  onChange={(event) => setCustomerSearch(event.target.value)}
+                />
                 <select
                   className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
-                  value={customerId}
-                  onChange={(event) => setCustomerId(event.target.value)}
+                  value={customerId || EMPTY_CLIENT_OPTION}
+                  onChange={(event) => {
+                    const nextCustomerId = event.target.value === EMPTY_CLIENT_OPTION ? "" : event.target.value;
+                    setCustomerId(nextCustomerId);
+
+                    const selectedCustomer = customers.find((customer) => customer.id === nextCustomerId);
+                    if (selectedCustomer) {
+                      setCustomerSearch(selectedCustomer.fullName);
+                    }
+                  }}
                 >
-                  <option value="">Seleccionar cliente</option>
-                  {customers.map((customer) => (
+                  <option value={EMPTY_CLIENT_OPTION}>
+                    {filteredCustomers.length === 0 ? "No se encontraron clientes" : "Seleccionar cliente"}
+                  </option>
+                  {filteredCustomers.map((customer) => (
                     <option key={customer.id} value={customer.id}>
                       {customer.fullName}
                     </option>
@@ -317,9 +360,21 @@ export default function ComprasPage() {
 
               <div className="rounded-2xl border bg-[var(--surface)] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 3</p>
+                <p className="mt-1 font-semibold">Seleccionar fecha de compra</p>
+                <input
+                  type="date"
+                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                  value={purchaseDate}
+                  onChange={(event) => setPurchaseDate(event.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 4</p>
                 <p className="mt-1 font-semibold">Agregar productos</p>
                 <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Codigo" value={code} onChange={(event) => setCode(event.target.value)} required />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Código" value={code} onChange={(event) => setCode(event.target.value)} required />
                   <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
                   <select className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm" value={category} onChange={(event) => setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])}>
                     {CATEGORY_OPTIONS.map((option) => (
@@ -349,7 +404,7 @@ export default function ComprasPage() {
                   }}
                   className="h-10 w-full rounded-xl border text-sm font-semibold"
                 >
-                Cancelar edición
+                  Cancelar edición
                 </button>
               ) : null}
             </form>
@@ -373,7 +428,7 @@ export default function ComprasPage() {
         <ListFilters
           search={{
             label: "Buscar compra",
-            placeholder: `Buscar por cliente o campa${ENYE}a...`,
+            placeholder: "Buscar por cliente o campaña...",
             value: query,
             onChange: (value) => {
               setQuery(value);
@@ -389,7 +444,7 @@ export default function ComprasPage() {
               setCurrentPage(1);
             }}
           >
-            <option value="all">{`Todas las campa${ENYE}as`}</option>
+            <option value="all">Todas las campañas</option>
             {campaignFilterOptions.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}

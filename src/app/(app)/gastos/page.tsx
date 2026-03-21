@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ListFilters } from "@/components/ui/list-filters";
 import { PageHeading } from "@/components/ui/page-heading";
@@ -38,7 +38,6 @@ const currencyFormatter = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 2,
 });
 const EXPENSES_PER_PAGE = 10;
-const ENYE = String.fromCharCode(241);
 
 export default function GastosPage() {
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
@@ -72,7 +71,7 @@ export default function GastosPage() {
     const json = (await response.json()) as ExpensesResponse;
 
     if (!response.ok) {
-      setError(json.error ?? "No se pudo cargar gastos.");
+      setError(json.error ?? "No se pudieron cargar los gastos.");
       setExpenses([]);
       setIsLoading(false);
       return;
@@ -189,68 +188,96 @@ export default function GastosPage() {
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p> : null}
 
       {showCreateForm ? (
-        <Panel delay={180}>
-          <h2 className="text-lg font-semibold">{editingExpenseId ? "Editar gasto" : "Nuevo gasto"}</h2>
-          <form className="mt-3 grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
-            <select
-              className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-              value={campaignId}
-              onChange={(event) => setCampaignId(event.target.value)}
-            >
-                <option value="">Seleccionar campaña</option>
-              {campaignOptions.map((campaign) => (
-                <option key={campaign.id} value={campaign.id}>
-                  {campaign.name}
-                </option>
-              ))}
-            </select>
-            <input
-              className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-              placeholder="Concepto del gasto"
-              value={concept}
-              onChange={(event) => setConcept(event.target.value)}
-              required
-            />
-            <input
-              className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
-              placeholder="Monto"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              required
-            />
-            <textarea
-              className="min-h-24 rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm md:col-span-2"
-                placeholder="Observación (opcional)"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="h-10 rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:opacity-60 md:col-span-2"
-            >
-              {isSaving ? "Guardando..." : editingExpenseId ? "Actualizar gasto" : "Registrar gasto"}
-            </button>
-            {editingExpenseId ? (
+        <section className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
+          <Panel delay={180}>
+            <h2 className="text-lg font-semibold">{editingExpenseId ? "Editar gasto" : "Nuevo gasto"}</h2>
+            <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 1</p>
+                <p className="mt-1 font-semibold">Seleccionar campaña</p>
+                <select
+                  className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                  value={campaignId}
+                  onChange={(event) => setCampaignId(event.target.value)}
+                >
+                  <option value="">Seleccionar campaña</option>
+                  {campaignOptions.map((campaign) => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 2</p>
+                <p className="mt-1 font-semibold">Registrar concepto y monto</p>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <input
+                    className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                    placeholder="Concepto del gasto"
+                    value={concept}
+                    onChange={(event) => setConcept(event.target.value)}
+                    required
+                  />
+                  <input
+                    className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
+                    placeholder="Monto"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 3</p>
+                <p className="mt-1 font-semibold">Agregar observación</p>
+                <textarea
+                  className="mt-2 min-h-24 w-full rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm"
+                  placeholder="Observación (opcional)"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                />
+              </div>
+
               <button
-                type="button"
-                onClick={() => {
-                  resetForm();
-                  setSuccessMessage(null);
-                  setShowCreateForm(false);
-                }}
-                className="h-10 rounded-xl border text-sm font-semibold md:col-span-2"
+                type="submit"
+                disabled={isSaving}
+                className="h-10 w-full rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:opacity-60"
               >
-                Cancelar edición
+                {isSaving ? "Guardando..." : editingExpenseId ? "Actualizar gasto" : "Registrar gasto"}
               </button>
+              {editingExpenseId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetForm();
+                    setSuccessMessage(null);
+                    setShowCreateForm(false);
+                  }}
+                  className="h-10 w-full rounded-xl border text-sm font-semibold"
+                >
+                  Cancelar edición
+                </button>
+              ) : null}
+            </form>
+          </Panel>
+
+          <Panel delay={240}>
+            <h2 className="text-lg font-semibold">Resultado esperado</h2>
+            <ul className="mt-3 space-y-2 text-sm text-[var(--foreground-muted)]">
+              <li className="rounded-xl border bg-[var(--surface)] p-3">El gasto queda vinculado a la campaña seleccionada.</li>
+              <li className="rounded-xl border bg-[var(--surface)] p-3">Se actualiza el historial de gastos del negocio.</li>
+              <li className="rounded-xl border bg-[var(--surface)] p-3">El costo se reflejará en los reportes correspondientes.</li>
+            </ul>
+            {successMessage ? (
+              <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {successMessage}
+              </p>
             ) : null}
-          </form>
-          {successMessage ? (
-            <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {successMessage}
-            </p>
-          ) : null}
-        </Panel>
+          </Panel>
+        </section>
       ) : null}
 
       <Panel delay={260}>
@@ -263,7 +290,7 @@ export default function GastosPage() {
               setCurrentPage(1);
             }}
           >
-            <option value="all">{`Todas las campa${ENYE}as`}</option>
+            <option value="all">Todas las campañas</option>
             {campaignOptions.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}
