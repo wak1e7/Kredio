@@ -107,3 +107,61 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+    }
+
+    const originError = validateTrustedOrigin(request);
+    if (originError) {
+      return originError;
+    }
+
+    const ownedBusiness = await getOwnedBusiness(user.id);
+    if (!ownedBusiness) {
+      return NextResponse.json({ error: "No se encontró un negocio para este usuario." }, { status: 404 });
+    }
+
+    const { id } = await context.params;
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        id,
+        businessId: ownedBusiness.id,
+      },
+      select: {
+        id: true,
+        customerId: true,
+      },
+    });
+
+    if (!existingPayment) {
+      return NextResponse.json({ error: "Pago no encontrado." }, { status: 404 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.delete({
+        where: {
+          id: existingPayment.id,
+        },
+      });
+
+      await syncCustomerLedger(tx, ownedBusiness.id, existingPayment.customerId);
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "No se pudo eliminar el pago.",
+        detail: error instanceof Error ? error.message : "Error desconocido",
+      },
+      { status: 500 },
+    );
+  }
+}

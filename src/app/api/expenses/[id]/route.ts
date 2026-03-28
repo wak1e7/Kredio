@@ -114,3 +114,56 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+    }
+
+    const originError = validateTrustedOrigin(request);
+    if (originError) {
+      return originError;
+    }
+
+    const ownedBusiness = await getOwnedBusiness(user.id);
+    if (!ownedBusiness) {
+      return NextResponse.json({ error: "No se encontró un negocio para este usuario." }, { status: 404 });
+    }
+
+    const { id } = await context.params;
+    const existingExpense = await prisma.expense.findFirst({
+      where: {
+        id,
+        businessId: ownedBusiness.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existingExpense) {
+      return NextResponse.json({ error: "Gasto no encontrado." }, { status: 404 });
+    }
+
+    await prisma.expense.delete({
+      where: {
+        id: existingExpense.id,
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "No se pudo eliminar el gasto.",
+        detail: error instanceof Error ? error.message : "Error desconocido",
+      },
+      { status: 500 },
+    );
+  }
+}
+

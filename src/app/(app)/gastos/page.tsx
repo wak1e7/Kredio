@@ -46,6 +46,7 @@ export default function GastosPage() {
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -156,6 +157,37 @@ export default function GastosPage() {
     setError(null);
     setSuccessMessage(null);
     setShowCreateForm(true);
+  }
+
+  async function onDeleteExpense(expense: ExpenseRow) {
+    const confirmed = window.confirm(`¿Seguro que quieres eliminar el gasto "${expense.concept}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingExpenseId(expense.id);
+    setError(null);
+    setSuccessMessage(null);
+
+    const response = await fetch(`/api/expenses/${expense.id}`, {
+      method: "DELETE",
+    });
+
+    const json = (await response.json()) as { error?: string };
+    setDeletingExpenseId(null);
+
+    if (!response.ok) {
+      setError(json.error ?? "No se pudo eliminar el gasto.");
+      return;
+    }
+
+    if (editingExpenseId === expense.id) {
+      resetForm();
+      setShowCreateForm(false);
+    }
+
+    setSuccessMessage("Gasto eliminado correctamente.");
+    await loadExpenses();
   }
 
   return (
@@ -330,13 +362,23 @@ export default function GastosPage() {
                     <td className="py-3">{currencyFormatter.format(expense.amount)}</td>
                     <td className="py-3 text-[var(--foreground-muted)]">{expense.notes ?? "-"}</td>
                     <td className="py-3">
-                      <button
-                        type="button"
-                        onClick={() => onEditExpense(expense)}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
-                      >
-                        Editar
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onEditExpense(expense)}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteExpense(expense)}
+                          disabled={deletingExpenseId === expense.id}
+                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingExpenseId === expense.id ? "Eliminando..." : "Eliminar"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

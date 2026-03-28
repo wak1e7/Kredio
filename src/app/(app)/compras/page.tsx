@@ -67,6 +67,7 @@ export default function ComprasPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null);
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -281,6 +282,37 @@ export default function ComprasPage() {
     setShowCreateForm(true);
   }
 
+  async function onDeletePurchase(purchase: PurchaseRow) {
+    const confirmed = window.confirm(`¿Seguro que quieres eliminar la compra de ${purchase.customerName}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingPurchaseId(purchase.id);
+    setError(null);
+    setSuccessMessage(null);
+
+    const response = await fetch(`/api/purchases/${purchase.id}`, {
+      method: "DELETE",
+    });
+
+    const json = (await response.json()) as { error?: string };
+    setDeletingPurchaseId(null);
+
+    if (!response.ok) {
+      setError(json.error ?? "No se pudo eliminar la compra.");
+      return;
+    }
+
+    if (editingPurchaseId === purchase.id) {
+      resetProductForm();
+      setShowCreateForm(false);
+    }
+
+    setSuccessMessage("Compra eliminada correctamente.");
+    await loadData();
+  }
+
   return (
     <div className="space-y-4">
       <PageHeading
@@ -476,15 +508,25 @@ export default function ComprasPage() {
                     <td className="py-3">{purchase.itemsCount}</td>
                     <td className="py-3">{currencyFormatter.format(purchase.totalAmount)}</td>
                     <td className="py-3">
-                      <button
-                        type="button"
-                        onClick={() => onEditPurchase(purchase)}
-                        disabled={purchase.items.length !== 1}
-                        title={purchase.items.length !== 1 ? "La edición con varios productos aún no está disponible." : undefined}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Editar
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onEditPurchase(purchase)}
+                          disabled={purchase.items.length !== 1}
+                          title={purchase.items.length !== 1 ? "La edición con varios productos aún no está disponible." : undefined}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeletePurchase(purchase)}
+                          disabled={deletingPurchaseId === purchase.id}
+                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingPurchaseId === purchase.id ? "Eliminando..." : "Eliminar"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

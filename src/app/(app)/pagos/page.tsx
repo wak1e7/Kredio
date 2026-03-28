@@ -62,6 +62,7 @@ export default function PagosPage() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -229,6 +230,38 @@ export default function PagosPage() {
     setError(null);
     setSuccessMessage(null);
     setShowCreateForm(true);
+  }
+
+  async function onDeletePayment(payment: PaymentRow) {
+    const confirmed = window.confirm(`¿Seguro que quieres eliminar el pago de ${payment.customerName}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingPaymentId(payment.id);
+    setError(null);
+    setSuccessMessage(null);
+    setLatestAllocation(null);
+
+    const response = await fetch(`/api/payments/${payment.id}`, {
+      method: "DELETE",
+    });
+
+    const json = (await response.json()) as { error?: string };
+    setDeletingPaymentId(null);
+
+    if (!response.ok) {
+      setError(json.error ?? "No se pudo eliminar el pago.");
+      return;
+    }
+
+    if (editingPaymentId === payment.id) {
+      resetForm();
+      setShowCreateForm(false);
+    }
+
+    setSuccessMessage("Pago eliminado correctamente.");
+    await loadData();
   }
 
   return (
@@ -434,13 +467,23 @@ export default function PagosPage() {
                       {payment.applications.length > 0 ? payment.applications.map((app) => app.campaignName).join(", ") : "-"}
                     </td>
                     <td className="py-3">
-                      <button
-                        type="button"
-                        onClick={() => onEditPayment(payment)}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
-                      >
-                        Editar
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onEditPayment(payment)}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeletePayment(payment)}
+                          disabled={deletingPaymentId === payment.id}
+                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingPaymentId === payment.id ? "Eliminando..." : "Eliminar"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
