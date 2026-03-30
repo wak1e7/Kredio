@@ -24,6 +24,7 @@ type PurchaseItemRow = {
 type PurchaseRow = {
   id: string;
   purchaseDate: string;
+  source: "DIRECT" | "WAREHOUSE_TRANSFER";
   customerId: string;
   customerName: string;
   campaignId: string;
@@ -252,6 +253,11 @@ export default function ComprasPage() {
   );
 
   function onEditPurchase(purchase: PurchaseRow) {
+    if (purchase.source === "WAREHOUSE_TRANSFER") {
+      setError("Las compras asignadas desde almacén se editan desde el módulo de almacén.");
+      return;
+    }
+
     if (purchase.items.length !== 1) {
       setError("Por ahora solo se pueden editar compras con un solo producto registrado.");
       return;
@@ -512,8 +518,14 @@ export default function ComprasPage() {
                         <button
                           type="button"
                           onClick={() => onEditPurchase(purchase)}
-                          disabled={purchase.items.length !== 1}
-                          title={purchase.items.length !== 1 ? "La edición con varios productos aún no está disponible." : undefined}
+                          disabled={purchase.source === "WAREHOUSE_TRANSFER" || purchase.items.length !== 1}
+                          title={
+                            purchase.source === "WAREHOUSE_TRANSFER"
+                              ? "Esta compra fue asignada desde almacén."
+                              : purchase.items.length !== 1
+                                ? "La edición con varios productos aún no está disponible."
+                                : undefined
+                          }
                           className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Editar

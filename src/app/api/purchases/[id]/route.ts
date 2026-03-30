@@ -63,6 +63,7 @@ export async function PATCH(
           customerId: true,
           campaignId: true,
           purchaseDate: true,
+          source: true,
         },
       }),
       prisma.customer.findFirst({
@@ -83,6 +84,13 @@ export async function PATCH(
 
     if (!existingPurchase) {
       return NextResponse.json({ error: "Compra no encontrada." }, { status: 404 });
+    }
+
+    if (existingPurchase.source === "WAREHOUSE_TRANSFER") {
+      return NextResponse.json(
+        { error: "Las compras asignadas desde almacén deben ajustarse desde el módulo de almacén." },
+        { status: 400 },
+      );
     }
 
     if (!customer) {
@@ -207,6 +215,13 @@ export async function DELETE(
       select: {
         id: true,
         customerId: true,
+        source: true,
+        items: {
+          select: {
+            warehouseItemId: true,
+            quantity: true,
+          },
+        },
       },
     });
 
@@ -215,6 +230,23 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
+      for (const item of existingPurchase.items) {
+        if (!item.warehouseItemId) {
+          continue;
+        }
+
+        await tx.warehouseItem.update({
+          where: {
+            id: item.warehouseItemId,
+          },
+          data: {
+            availableQuantity: {
+              increment: item.quantity,
+            },
+          },
+        });
+      }
+
       await tx.purchase.delete({
         where: {
           id: existingPurchase.id,

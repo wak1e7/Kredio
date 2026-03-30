@@ -1,4 +1,4 @@
-﻿import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
+import { canAccessBusiness, getAuthenticatedUser, getOwnedBusiness } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const [campaigns, balances, purchases, paymentApplications, latestApplicationsRaw] = await Promise.all([
+    const [campaigns, balances, purchases, warehouseItems, paymentApplications, latestApplicationsRaw] = await Promise.all([
       prisma.campaign.findMany({
         where: {
           id: { in: campaignScopeIds },
@@ -157,6 +157,22 @@ export async function GET(request: NextRequest) {
           campaignId: true,
           purchaseDate: true,
           totalAmount: true,
+          source: true,
+        },
+      }),
+      prisma.warehouseItem.findMany({
+        where: {
+          businessId,
+          campaignId: { in: campaignScopeIds },
+          campaign: {
+            year: selectedYear,
+          },
+        },
+        select: {
+          campaignId: true,
+          entryDate: true,
+          quantity: true,
+          salePrice: true,
         },
       }),
       prisma.paymentApplication.findMany({
@@ -216,7 +232,6 @@ export async function GET(request: NextRequest) {
     let trendSeries: TrendPoint[] = [];
 
     const totalDebt = balances.reduce((acc, item) => acc + Number(item.balance.toString()), 0);
-    const soldYear = purchases.reduce((acc, item) => acc + Number(item.totalAmount.toString()), 0);
     const collectedYear = paymentApplications.reduce(
       (acc, item) => acc + Number(item.appliedAmount.toString()),
       0,
@@ -246,18 +261,28 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const campaignSoldTotals = campaigns.map((campaign) => {
-      const sold = campaign.customerBalances.reduce(
-        (acc, item) => acc + Number(item.totalPurchased.toString()),
-        0,
-      );
+    const campaignSoldMap = new Map<string, number>();
 
-      return {
-        campaignId: campaign.id,
-        campaign: campaign.name,
-        sold: roundCurrency(sold),
-      };
-    });
+    for (const purchase of purchases) {
+      if (purchase.source !== "DIRECT") {
+        continue;
+      }
+
+      campaignSoldMap.set(
+        purchase.campaignId,
+        roundCurrency((campaignSoldMap.get(purchase.campaignId) ?? 0) + Number(purchase.totalAmount.toString())),
+      );
+    }
+
+    for (const item of warehouseItems) {
+      const sold = item.quantity * Number(item.salePrice.toString());
+      campaignSoldMap.set(
+        item.campaignId,
+        roundCurrency((campaignSoldMap.get(item.campaignId) ?? 0) + sold),
+      );
+    }
+
+    const soldYear = Array.from(campaignSoldMap.values()).reduce((acc, value) => acc + value, 0);
 
     if (selectedCampaign) {
       trendMode = "days";
@@ -266,8 +291,7 @@ export async function GET(request: NextRequest) {
       const paymentDays = new Set<number>();
 
       for (const purchase of purchases) {
-        const campaignMatch = purchase.campaignId === selectedCampaign.id;
-        if (!campaignMatch) continue;
+        if (purchase.campaignId !== selectedCampaign.id || purchase.source !== "DIRECT") continue;
 
         const day = purchase.purchaseDate.getDate();
         soldByDay.set(
@@ -276,9 +300,16 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      for (const item of warehouseItems) {
+        if (item.campaignId !== selectedCampaign.id) continue;
+
+        const day = item.entryDate.getDate();
+        const sold = item.quantity * Number(item.salePrice.toString());
+        soldByDay.set(day, roundCurrency((soldByDay.get(day) ?? 0) + sold));
+      }
+
       for (const application of paymentApplications) {
         if (application.campaignId !== selectedCampaign.id) continue;
-
         paymentDays.add(application.payment.paymentDate.getDate());
       }
 
@@ -290,9 +321,9 @@ export async function GET(request: NextRequest) {
         }));
     } else {
       trendMode = "campaigns";
-      trendSeries = campaignSoldTotals.map((campaign) => ({
-        label: campaign.campaign,
-        sold: campaign.sold,
+      trendSeries = campaigns.map((campaign) => ({
+        label: campaign.name,
+        sold: roundCurrency(campaignSoldMap.get(campaign.id) ?? 0),
       }));
     }
 
@@ -347,5 +378,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-

@@ -3,6 +3,7 @@
 import { cn } from "@/lib/cn";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
+  Archive,
   Bell,
   ChevronDown,
   FileText,
@@ -52,6 +53,7 @@ const mainItems: NavItem[] = [
   { label: "Compras", href: "/compras", icon: Package },
   { label: "Pagos", href: "/pagos", icon: HandCoins },
   { label: "Gastos", href: "/gastos", icon: ReceiptText },
+  { label: "Almacén", href: "/almacen", icon: Archive },
 ];
 
 const toolItems: NavItem[] = [

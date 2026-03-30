@@ -1,4 +1,4 @@
-﻿import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 const CATEGORY_ORDER = ["Sokso", "Footloose", "Leonisa"] as const;
 
@@ -81,6 +81,14 @@ function roundMoney(value: number) {
   return Number(value.toFixed(2));
 }
 
+function normalizeCategory(category: string | null | undefined) {
+  if (category && CATEGORY_ORDER.includes(category as (typeof CATEGORY_ORDER)[number])) {
+    return category;
+  }
+
+  return "Sin categoría";
+}
+
 export async function getReportOverviewData({
   businessId,
   requestedYear,
@@ -122,13 +130,15 @@ export async function getReportOverviewData({
       ? requestedCampaignId
       : null;
 
-  const [scopedCampaigns, scopedPurchases, scopedExpenses] = await Promise.all([
+  const campaignWhere = {
+    businessId,
+    year: selectedYear,
+    id: selectedCampaignId ?? undefined,
+  };
+
+  const [scopedCampaigns, scopedPurchases, scopedWarehouseItems, scopedExpenses] = await Promise.all([
     prisma.campaign.findMany({
-      where: {
-        businessId,
-        year: selectedYear,
-        id: selectedCampaignId ?? undefined,
-      },
+      where: campaignWhere,
       include: {
         customerBalances: {
           select: {
@@ -157,6 +167,7 @@ export async function getReportOverviewData({
       select: {
         id: true,
         customerId: true,
+        source: true,
         totalAmount: true,
         customer: {
           select: {
@@ -180,6 +191,23 @@ export async function getReportOverviewData({
             costPrice: true,
           },
         },
+      },
+    }),
+    prisma.warehouseItem.findMany({
+      where: {
+        businessId,
+        campaignId: selectedCampaignId ?? undefined,
+        campaign: {
+          year: selectedYear,
+        },
+      },
+      select: {
+        id: true,
+        campaignId: true,
+        category: true,
+        quantity: true,
+        costPrice: true,
+        salePrice: true,
       },
     }),
     prisma.expense.findMany({
@@ -210,7 +238,9 @@ export async function getReportOverviewData({
   const categoryMap = new Map<string, { category: string; sold: number; cost: number; margin: number; itemsCount: number }>();
   const buyerMap = new Map<string, { customerId: string; customerName: string; totalPurchased: number; purchasesCount: number }>();
   const debtorMap = new Map<string, { customerId: string; customerName: string; debt: number; pendingCampaigns: number }>();
-  const campaignMarginMap = new Map<string, number>();
+  const campaignSoldMap = new Map<string, number>();
+  const campaignCostMap = new Map<string, number>();
+  const campaignExpenseMap = new Map<string, number>();
 
   for (const category of CATEGORY_ORDER) {
     categoryMap.set(category, {
@@ -234,16 +264,15 @@ export async function getReportOverviewData({
     buyerEntry.purchasesCount += 1;
     buyerMap.set(purchase.customerId, buyerEntry);
 
-    let campaignCost = 0;
+    if (purchase.source !== "DIRECT") {
+      continue;
+    }
 
     for (const item of purchase.items) {
       const sold = Number(item.subtotal.toString());
       const cost = Number((item.quantity * Number(item.costPrice.toString())).toFixed(2));
       const margin = sold - cost;
-      const category =
-        item.category && CATEGORY_ORDER.includes(item.category as (typeof CATEGORY_ORDER)[number])
-          ? item.category
-          : "Sin categoría";
+      const category = normalizeCategory(item.category);
 
       const categoryEntry = categoryMap.get(category) ?? {
         category,
@@ -259,31 +288,51 @@ export async function getReportOverviewData({
       categoryEntry.itemsCount += item.quantity;
       categoryMap.set(category, categoryEntry);
 
-      campaignCost += cost;
+      campaignSoldMap.set(purchase.campaign.id, (campaignSoldMap.get(purchase.campaign.id) ?? 0) + sold);
+      campaignCostMap.set(purchase.campaign.id, (campaignCostMap.get(purchase.campaign.id) ?? 0) + cost);
     }
-
-    const currentCampaignMargin = campaignMarginMap.get(purchase.campaign.id) ?? 0;
-    const nextMargin = currentCampaignMargin + Number(purchase.totalAmount.toString()) - campaignCost;
-    campaignMarginMap.set(purchase.campaign.id, nextMargin);
   }
 
-  const campaignCostMap = new Map<string, number>();
+  for (const warehouseItem of scopedWarehouseItems) {
+    const sold = Number((warehouseItem.quantity * Number(warehouseItem.salePrice.toString())).toFixed(2));
+    const cost = Number((warehouseItem.quantity * Number(warehouseItem.costPrice.toString())).toFixed(2));
+    const margin = sold - cost;
+    const category = normalizeCategory(warehouseItem.category);
 
-  for (const purchase of scopedPurchases) {
-    let purchaseCost = 0;
-    for (const item of purchase.items) {
-      purchaseCost += item.quantity * Number(item.costPrice.toString());
+    const categoryEntry = categoryMap.get(category) ?? {
+      category,
+      sold: 0,
+      cost: 0,
+      margin: 0,
+      itemsCount: 0,
+    };
+
+    categoryEntry.sold += sold;
+    categoryEntry.cost += cost;
+    categoryEntry.margin += margin;
+    categoryEntry.itemsCount += warehouseItem.quantity;
+    categoryMap.set(category, categoryEntry);
+
+    campaignSoldMap.set(warehouseItem.campaignId, (campaignSoldMap.get(warehouseItem.campaignId) ?? 0) + sold);
+    campaignCostMap.set(warehouseItem.campaignId, (campaignCostMap.get(warehouseItem.campaignId) ?? 0) + cost);
+  }
+
+  for (const expense of scopedExpenses) {
+    if (!expense.campaignId) {
+      continue;
     }
 
-    const currentCost = campaignCostMap.get(purchase.campaign.id) ?? 0;
-    campaignCostMap.set(purchase.campaign.id, currentCost + purchaseCost);
+    campaignExpenseMap.set(
+      expense.campaignId,
+      (campaignExpenseMap.get(expense.campaignId) ?? 0) + Number(expense.amount.toString()),
+    );
   }
 
   const campaignBreakdown = scopedCampaigns.map((campaign) => {
-    const sold = campaign.customerBalances.reduce((acc, item) => acc + Number(item.totalPurchased.toString()), 0);
     const collected = campaign.customerBalances.reduce((acc, item) => acc + Number(item.totalPaid.toString()), 0);
     const pending = campaign.customerBalances.reduce((acc, item) => acc + Number(item.balance.toString()), 0);
-    const cost = campaignCostMap.get(campaign.id) ?? 0;
+    const sold = campaignSoldMap.get(campaign.id) ?? 0;
+    const cost = (campaignCostMap.get(campaign.id) ?? 0) + (campaignExpenseMap.get(campaign.id) ?? 0);
 
     for (const balance of campaign.customerBalances) {
       const currentDebt = Number(balance.balance.toString());
@@ -312,36 +361,8 @@ export async function getReportOverviewData({
       cost: roundMoney(cost),
       collected: roundMoney(collected),
       pending: roundMoney(pending),
-      margin: roundMoney(campaignMarginMap.get(campaign.id) ?? 0),
+      margin: roundMoney(sold - cost),
       customersCount: campaign.customerBalances.length,
-    };
-  });
-
-  const annualSold = campaignBreakdown.reduce((acc, item) => acc + item.sold, 0);
-  const annualCollected = campaignBreakdown.reduce((acc, item) => acc + item.collected, 0);
-  const annualPending = campaignBreakdown.reduce((acc, item) => acc + item.pending, 0);
-  const purchaseCost = [...categoryMap.values()].reduce((acc, item) => acc + item.cost, 0);
-  const expensesTotal = scopedExpenses.reduce((acc, expense) => acc + Number(expense.amount.toString()), 0);
-  const annualCost = purchaseCost + expensesTotal;
-  const annualMargin = annualSold - annualCost;
-
-  const expenseCostMap = new Map<string, number>();
-  for (const expense of scopedExpenses) {
-    if (!expense.campaignId) {
-      continue;
-    }
-
-    const current = expenseCostMap.get(expense.campaignId) ?? 0;
-    expenseCostMap.set(expense.campaignId, current + Number(expense.amount.toString()));
-  }
-
-  const normalizedCampaignBreakdown = campaignBreakdown.map((campaign) => {
-    const expenseCost = expenseCostMap.get(campaign.campaignId) ?? 0;
-    const totalCost = campaign.cost + expenseCost;
-    return {
-      ...campaign,
-      cost: roundMoney(totalCost),
-      margin: roundMoney(campaign.sold - totalCost),
     };
   });
 
@@ -357,11 +378,18 @@ export async function getReportOverviewData({
       const orderA = CATEGORY_ORDER.indexOf(a.category as (typeof CATEGORY_ORDER)[number]);
       const orderB = CATEGORY_ORDER.indexOf(b.category as (typeof CATEGORY_ORDER)[number]);
 
-      if (orderA === -1 && orderB === -1) return a.category.localeCompare(b.category);
+      if (orderA === -1 && orderB === -1) return a.category.localeCompare(b.category, "es", { sensitivity: "base" });
       if (orderA === -1) return 1;
       if (orderB === -1) return -1;
       return orderA - orderB;
     });
+
+  const annualSold = campaignBreakdown.reduce((acc, item) => acc + item.sold, 0);
+  const annualCollected = campaignBreakdown.reduce((acc, item) => acc + item.collected, 0);
+  const annualPending = campaignBreakdown.reduce((acc, item) => acc + item.pending, 0);
+  const expensesTotal = scopedExpenses.reduce((acc, expense) => acc + Number(expense.amount.toString()), 0);
+  const annualCost = campaignBreakdown.reduce((acc, item) => acc + item.cost, 0);
+  const annualMargin = annualSold - annualCost;
 
   const topBuyers = [...buyerMap.values()]
     .map((entry) => ({
@@ -388,7 +416,7 @@ export async function getReportOverviewData({
       sold: roundMoney(annualSold),
       collected: roundMoney(annualCollected),
       pending: roundMoney(annualPending),
-      cost: roundMoney(purchaseCost + expensesTotal),
+      cost: roundMoney(annualCost),
       margin: roundMoney(annualMargin),
       campaignsCount: campaignBreakdown.length,
     },
@@ -398,10 +426,10 @@ export async function getReportOverviewData({
       expenseDate: expense.expenseDate,
       campaignName: expense.campaign?.name ?? "Sin campaña",
       concept: expense.concept,
-      amount: Number(expense.amount.toString()),
+      amount: roundMoney(Number(expense.amount.toString())),
       notes: expense.notes,
     })),
-    campaignBreakdown: normalizedCampaignBreakdown,
+    campaignBreakdown,
     categoryMargins,
     topBuyers,
     topDebtors,

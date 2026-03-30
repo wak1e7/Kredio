@@ -70,7 +70,13 @@ export async function GET(request: NextRequest) {
         customerId: customerId || undefined,
         campaignId: campaignId || undefined,
       },
-      include: {
+      select: {
+        id: true,
+        purchaseDate: true,
+        source: true,
+        customerId: true,
+        campaignId: true,
+        totalAmount: true,
         customer: { select: { fullName: true } },
         campaign: { select: { name: true } },
         items: {
@@ -93,6 +99,7 @@ export async function GET(request: NextRequest) {
     const data = purchases.map((purchase) => ({
       id: purchase.id,
       purchaseDate: purchase.purchaseDate,
+      source: purchase.source,
       customerId: purchase.customerId,
       customerName: purchase.customer.fullName,
       campaignId: purchase.campaignId,
@@ -182,6 +189,7 @@ export async function POST(request: NextRequest) {
           businessId: businessResolution.businessId,
           customerId: payload.customerId,
           campaignId: payload.campaignId,
+          source: "DIRECT",
           purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : new Date(),
           notes: payload.notes,
           totalAmount: totals.totalAmount,
