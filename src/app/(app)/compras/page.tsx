@@ -60,6 +60,11 @@ function normalizeText(value: string) {
     .replace(/\s+/g, " ");
 }
 
+function getPurchaseBrand(items: PurchaseItemRow[]) {
+  const brands = [...new Set(items.map((item) => item.category?.trim()).filter(Boolean))];
+  return brands.length > 0 ? brands.join(" / ") : "-";
+}
+
 export default function ComprasPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
@@ -500,6 +505,7 @@ export default function ComprasPage() {
                   <th className="pb-2 font-semibold">Fecha</th>
                   <th className="pb-2 font-semibold">Cliente</th>
                   <th className="pb-2 font-semibold">Campaña</th>
+                  <th className="pb-2 font-semibold">Marca</th>
                   <th className="pb-2 font-semibold">Items</th>
                   <th className="pb-2 font-semibold">Total</th>
                   <th className="pb-2 font-semibold">Acción</th>
@@ -511,6 +517,7 @@ export default function ComprasPage() {
                     <td className="py-3 text-[var(--foreground-muted)]">{new Date(purchase.purchaseDate).toLocaleDateString("es-PE")}</td>
                     <td className="py-3 font-medium">{purchase.customerName}</td>
                     <td className="py-3">{purchase.campaignName}</td>
+                    <td className="py-3">{getPurchaseBrand(purchase.items)}</td>
                     <td className="py-3">{purchase.itemsCount}</td>
                     <td className="py-3">{currencyFormatter.format(purchase.totalAmount)}</td>
                     <td className="py-3">

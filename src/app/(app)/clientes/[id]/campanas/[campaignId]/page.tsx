@@ -15,6 +15,7 @@ function formatCurrency(value: number) {
 type PurchaseItemRow = {
   key: string;
   product: string;
+  brand: string;
   qty: number;
   price: number;
   subtotal: number;
@@ -86,6 +87,7 @@ export default async function ClienteCampaignDetailPage({
     purchase.items.map((item: (typeof purchase.items)[number]) => ({
       key: item.id,
       product: item.productName,
+      brand: item.category?.trim() || "-",
       qty: item.quantity,
       price: Number(item.salePrice.toString()),
       subtotal: Number(item.subtotal.toString()),
@@ -114,6 +116,7 @@ export default async function ClienteCampaignDetailPage({
               <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 <tr>
                   <th className="pb-2 font-semibold">Producto</th>
+                  <th className="pb-2 font-semibold">Marca</th>
                   <th className="pb-2 font-semibold">Cantidad</th>
                   <th className="pb-2 font-semibold">Precio unitario</th>
                   <th className="pb-2 font-semibold">Subtotal</th>
@@ -123,6 +126,7 @@ export default async function ClienteCampaignDetailPage({
                 {itemRows.map((item) => (
                   <tr key={item.key} className="border-t border-[var(--border)]/80">
                     <td className="py-3 font-medium">{item.product}</td>
+                    <td className="py-3">{item.brand}</td>
                     <td className="py-3">{item.qty}</td>
                     <td className="py-3">{formatCurrency(item.price)}</td>
                     <td className="py-3">{formatCurrency(item.subtotal)}</td>

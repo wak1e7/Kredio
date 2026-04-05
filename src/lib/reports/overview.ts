@@ -63,6 +63,15 @@ export type ReportTopDebtorRow = {
   pendingCampaigns: number;
 };
 
+export type ReportCampaignProductDetailRow = {
+  productKey: string;
+  productName: string;
+  category: string;
+  quantity: number;
+  totalSold: number;
+  totalCost: number;
+};
+
 export type ReportOverviewData = {
   selectedYear: number;
   availableYears: number[];
@@ -75,6 +84,7 @@ export type ReportOverviewData = {
   categoryMargins: ReportCategoryMarginRow[];
   topBuyers: ReportTopBuyerRow[];
   topDebtors: ReportTopDebtorRow[];
+  campaignProductDetails: ReportCampaignProductDetailRow[];
 };
 
 function roundMoney(value: number) {
@@ -185,7 +195,11 @@ export async function getReportOverviewData({
         items: {
           select: {
             id: true,
+            productCode: true,
+            productName: true,
             category: true,
+            size: true,
+            color: true,
             quantity: true,
             subtotal: true,
             costPrice: true,
@@ -204,7 +218,11 @@ export async function getReportOverviewData({
       select: {
         id: true,
         campaignId: true,
+        code: true,
+        name: true,
         category: true,
+        size: true,
+        color: true,
         quantity: true,
         costPrice: true,
         salePrice: true,
@@ -241,6 +259,7 @@ export async function getReportOverviewData({
   const campaignSoldMap = new Map<string, number>();
   const campaignCostMap = new Map<string, number>();
   const campaignExpenseMap = new Map<string, number>();
+  const campaignProductMap = new Map<string, ReportCampaignProductDetailRow>();
 
   for (const category of CATEGORY_ORDER) {
     categoryMap.set(category, {
@@ -290,6 +309,24 @@ export async function getReportOverviewData({
 
       campaignSoldMap.set(purchase.campaign.id, (campaignSoldMap.get(purchase.campaign.id) ?? 0) + sold);
       campaignCostMap.set(purchase.campaign.id, (campaignCostMap.get(purchase.campaign.id) ?? 0) + cost);
+
+      if (selectedCampaignId) {
+        const productKey = `${item.productCode}|${item.productName}|${item.category ?? ""}|${item.size ?? ""}|${item.color ?? ""}`;
+        const suffix = [item.size ? `Talla ${item.size}` : "", item.color ?? ""].filter(Boolean).join(" · ");
+        const currentProduct = campaignProductMap.get(productKey) ?? {
+          productKey,
+          productName: suffix ? `${item.productName} (${suffix})` : item.productName,
+          category,
+          quantity: 0,
+          totalSold: 0,
+          totalCost: 0,
+        };
+
+        currentProduct.quantity += item.quantity;
+        currentProduct.totalSold += sold;
+        currentProduct.totalCost += cost;
+        campaignProductMap.set(productKey, currentProduct);
+      }
     }
   }
 
@@ -315,6 +352,24 @@ export async function getReportOverviewData({
 
     campaignSoldMap.set(warehouseItem.campaignId, (campaignSoldMap.get(warehouseItem.campaignId) ?? 0) + sold);
     campaignCostMap.set(warehouseItem.campaignId, (campaignCostMap.get(warehouseItem.campaignId) ?? 0) + cost);
+
+    if (selectedCampaignId) {
+      const productKey = `${warehouseItem.code}|${warehouseItem.name}|${warehouseItem.category ?? ""}|${warehouseItem.size ?? ""}|${warehouseItem.color ?? ""}`;
+      const suffix = [warehouseItem.size ? `Talla ${warehouseItem.size}` : "", warehouseItem.color ?? ""].filter(Boolean).join(" · ");
+      const currentProduct = campaignProductMap.get(productKey) ?? {
+        productKey,
+        productName: suffix ? `${warehouseItem.name} (${suffix})` : warehouseItem.name,
+        category,
+        quantity: 0,
+        totalSold: 0,
+        totalCost: 0,
+      };
+
+      currentProduct.quantity += warehouseItem.quantity;
+      currentProduct.totalSold += sold;
+      currentProduct.totalCost += cost;
+      campaignProductMap.set(productKey, currentProduct);
+    }
   }
 
   for (const expense of scopedExpenses) {
@@ -433,5 +488,12 @@ export async function getReportOverviewData({
     categoryMargins,
     topBuyers,
     topDebtors,
+    campaignProductDetails: [...campaignProductMap.values()]
+      .map((item) => ({
+        ...item,
+        totalSold: roundMoney(item.totalSold),
+        totalCost: roundMoney(item.totalCost),
+      }))
+      .sort((a, b) => b.totalSold - a.totalSold),
   };
 }

@@ -5,6 +5,7 @@ type CustomerCampaignStatus = "OPEN" | "PARTIAL" | "PAID";
 export type CustomerStatementProduct = {
   productKey: string;
   productName: string;
+  brand: string;
   totalQty: number;
   totalAmount: number;
   lastCampaign: string;
@@ -108,6 +109,7 @@ export async function getCustomerStatementData(userId: string, customerId: strin
               id: true,
               productCode: true,
               productName: true,
+              category: true,
               size: true,
               color: true,
               quantity: true,
@@ -165,6 +167,7 @@ export async function getCustomerStatementData(userId: string, customerId: strin
         productMap.set(key, {
           productKey: key,
           productName: item.productName,
+          brand: item.category?.trim() || "-",
           totalQty: item.quantity,
           totalAmount: subtotal,
           lastCampaign: purchase.campaign.name,
@@ -175,6 +178,17 @@ export async function getCustomerStatementData(userId: string, customerId: strin
 
       existing.totalQty += item.quantity;
       existing.totalAmount = Number((existing.totalAmount + subtotal).toFixed(2));
+      if (item.category?.trim()) {
+        const brands = new Set(
+          existing.brand
+            .split(" / ")
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+            .filter((entry) => entry !== "-"),
+        );
+        brands.add(item.category.trim());
+        existing.brand = brands.size > 0 ? [...brands].join(" / ") : "-";
+      }
       if (purchase.purchaseDate > existing.lastDate) {
         existing.lastDate = purchase.purchaseDate;
         existing.lastCampaign = purchase.campaign.name;
@@ -195,6 +209,10 @@ export async function getCustomerStatementData(userId: string, customerId: strin
   for (const purchase of customer.purchases) {
     for (const item of purchase.items) {
       const detailParts = [`Cant. ${item.quantity}`];
+
+      if (item.category) {
+        detailParts.push(`Marca ${item.category}`);
+      }
 
       if (item.size) {
         detailParts.push(`Talla ${item.size}`);

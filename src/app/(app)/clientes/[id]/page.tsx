@@ -139,6 +139,7 @@ export default async function ClienteProfilePage({
               <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 <tr>
                   <th className="pb-2 font-semibold">Producto</th>
+                  <th className="pb-2 font-semibold">Marca</th>
                   <th className="pb-2 font-semibold">Cantidad total</th>
                   <th className="pb-2 font-semibold">Total comprado</th>
                   <th className="pb-2 font-semibold">Última campaña</th>
@@ -148,6 +149,7 @@ export default async function ClienteProfilePage({
                 {statement.products.map((item) => (
                   <tr key={item.productKey} className="border-t border-[var(--border)]/80">
                     <td className="py-3 font-medium">{item.productName}</td>
+                    <td className="py-3">{item.brand}</td>
                     <td className="py-3">{item.totalQty}</td>
                     <td className="py-3">{formatCurrency(item.totalAmount)}</td>
                     <td className="py-3 text-[var(--foreground-muted)]">{item.lastCampaign}</td>

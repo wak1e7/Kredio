@@ -297,6 +297,26 @@ export async function GET(request: NextRequest) {
     });
     cursorY -= 10;
 
+    if (selectedCampaignName) {
+      drawSectionTitle("Detalle de productos de la campaña");
+      drawTable({
+        headers: ["Producto", "Marca", "Cantidad", "Costo", "Vendido"],
+        widths: [300, 90, 70, 100, 100],
+        rightAligned: [2, 3, 4],
+        rows:
+          data.campaignProductDetails.length > 0
+            ? data.campaignProductDetails.map((row) => [
+                row.productName,
+                row.category,
+                String(row.quantity),
+                formatCurrency(row.totalCost),
+                formatCurrency(row.totalSold),
+              ])
+            : [["No hay productos registrados para esta campaña.", "-", "0", formatCurrency(0), formatCurrency(0)]],
+      });
+      cursorY -= 10;
+    }
+
     drawSectionTitle("Historial de gastos");
     drawTable({
       headers: ["Fecha", "Campaña", "Concepto", "Monto", "Observación"],
