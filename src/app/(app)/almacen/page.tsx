@@ -400,6 +400,10 @@ export default function AlmacenPage() {
     const normalizedQuery = query.trim().toLowerCase();
 
     return warehouseItems.filter((item) => {
+      if (item.availableQuantity <= 0) {
+        return false;
+      }
+
       const matchesQuery =
         normalizedQuery.length === 0 ||
         item.name.toLowerCase().includes(normalizedQuery) ||
