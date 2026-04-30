@@ -31,6 +31,7 @@ type PurchaseRow = {
   campaignName: string;
   itemsCount: number;
   totalAmount: number;
+  notes?: string | null;
   items: PurchaseItemRow[];
 };
 
@@ -95,6 +96,7 @@ export default function ComprasPage() {
   const [quantity, setQuantity] = useState("1");
   const [costPrice, setCostPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
+  const [notes, setNotes] = useState("");
 
   const syncCustomerSelection = useCallback(
     (value: string) => {
@@ -120,6 +122,8 @@ export default function ComprasPage() {
     setQuantity("1");
     setCostPrice("");
     setSalePrice("");
+    setCampaignId("");
+    setNotes("");
   }
 
   const loadData = useCallback(async () => {
@@ -200,6 +204,7 @@ export default function ComprasPage() {
         customerId,
         campaignId,
         purchaseDate: toPurchaseDateIso(purchaseDate),
+        notes: notes || undefined,
         items: [
           {
             code,
@@ -244,15 +249,6 @@ export default function ComprasPage() {
     });
   }, [campaignFilter, purchases, query]);
 
-  const filteredCustomers = useMemo(() => {
-    const normalizedSearch = customerSearch.trim().toLowerCase();
-    if (!normalizedSearch) {
-      return customers;
-    }
-
-    return customers.filter((customer) => customer.fullName.toLowerCase().includes(normalizedSearch));
-  }, [customerSearch, customers]);
-
   const filteredTotalPages = Math.max(1, Math.ceil(filteredPurchases.length / PURCHASES_PER_PAGE));
   const paginatedPurchases = filteredPurchases.slice(
     (currentPage - 1) * PURCHASES_PER_PAGE,
@@ -286,6 +282,7 @@ export default function ComprasPage() {
     setQuantity(String(item.quantity));
     setCostPrice(String(item.costPrice));
     setSalePrice(String(item.salePrice));
+    setNotes(purchase.notes ?? "");
     setError(null);
     setSuccessMessage(null);
     setShowCreateForm(true);
@@ -366,7 +363,7 @@ export default function ComprasPage() {
                   required
                 />
                 <datalist id="purchase-customers">
-                  {filteredCustomers.map((customer) => (
+                  {customers.map((customer) => (
                     <option key={customer.id} value={customer.fullName} />
                   ))}
                 </datalist>
@@ -379,10 +376,9 @@ export default function ComprasPage() {
                   className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
                   value={campaignId}
                   onChange={(event) => setCampaignId(event.target.value)}
-                  disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"}
                 >
                   <option value="">Seleccionar campaña</option>
-                  {campaigns.map((campaign) => (
+                  {(editingPurchaseId ? campaignFilterOptions : campaigns).map((campaign) => (
                     <option key={campaign.id} value={campaign.id}>
                       {campaign.name}
                     </option>
@@ -410,7 +406,6 @@ export default function ComprasPage() {
                     className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
                     value={category}
                     onChange={(event) => setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])}
-                    disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"}
                   >
                     {CATEGORY_OPTIONS.map((option) => (
                       <option key={option} value={option}>
@@ -418,14 +413,25 @@ export default function ComprasPage() {
                       </option>
                     ))}
                   </select>
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Código" value={code} onChange={(event) => setCode(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Talla" value={size} onChange={(event) => setSize(event.target.value)} disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Color" value={color} onChange={(event) => setColor(event.target.value)} disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Código" value={code} onChange={(event) => setCode(event.target.value)} required />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Talla" value={size} onChange={(event) => setSize(event.target.value)} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Color" value={color} onChange={(event) => setColor(event.target.value)} />
                   <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Cantidad" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de costo" value={costPrice} onChange={(event) => setCostPrice(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de venta" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de costo" value={costPrice} onChange={(event) => setCostPrice(event.target.value)} required />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de venta" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} required />
                 </div>
+              </div>
+
+              <div className="rounded-2xl border bg-[var(--surface)] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Paso 5</p>
+                <p className="mt-1 font-semibold">Agregar comentario</p>
+                <textarea
+                  className="mt-2 min-h-24 w-full rounded-xl border bg-[var(--surface)] px-3 py-2 text-sm"
+                  placeholder="Comentario (opcional)"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                />
               </div>
 
               <button type="submit" disabled={isSaving} className="h-10 w-full rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:opacity-60">
@@ -455,7 +461,7 @@ export default function ComprasPage() {
               <li className="rounded-xl border bg-[var(--surface)] p-3">Se actualiza la deuda total del cliente.</li>
               {editingPurchaseSource === "WAREHOUSE_TRANSFER" ? (
                 <li className="rounded-xl border bg-[var(--surface)] p-3">
-                  La compra viene desde almacén: aquí puedes ajustar cliente, fecha y cantidad sin perder consistencia de stock.
+                  La compra viene desde almacén: aquí puedes ajustar cliente, campaña, producto, fecha y cantidad sin perder consistencia de stock.
                 </li>
               ) : null}
             </ul>

@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
         customerId: true,
         campaignId: true,
         totalAmount: true,
+        notes: true,
         customer: { select: { fullName: true } },
         campaign: { select: { name: true } },
         items: {
@@ -107,6 +108,7 @@ export async function GET(request: NextRequest) {
       campaignName: purchase.campaign.name,
       itemsCount: purchase.items.length,
       totalAmount: Number(purchase.totalAmount.toString()),
+      notes: purchase.notes,
       items: purchase.items.map((item) => ({
         id: item.id,
         warehouseItemId: item.warehouseItemId,

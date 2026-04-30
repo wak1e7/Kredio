@@ -111,13 +111,6 @@ export async function PATCH(
         );
       }
 
-      if (payload.campaignId !== existingPurchase.campaignId) {
-        return NextResponse.json(
-          { error: "Las compras de almacén deben mantenerse en la campaña original del producto." },
-          { status: 400 },
-        );
-      }
-
       const desiredItem = payload.items[0];
       if (!desiredItem) {
         return NextResponse.json({ error: "Debes mantener un producto en la compra." }, { status: 400 });
@@ -156,7 +149,7 @@ export async function PATCH(
       }
 
       const nextTotalAmount = Number(
-        (nextQuantity * Number(warehouseItem.salePrice.toString())).toFixed(2),
+        (nextQuantity * desiredItem.salePrice).toFixed(2),
       );
 
       const result = await prisma.$transaction(async (tx) => {
@@ -166,6 +159,7 @@ export async function PATCH(
           },
           data: {
             customerId: payload.customerId,
+            campaignId: payload.campaignId,
             purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : existingPurchase.purchaseDate,
             notes: payload.notes?.trim() || null,
             totalAmount: nextTotalAmount,
@@ -175,15 +169,15 @@ export async function PATCH(
                   id: transferItem.id,
                 },
                 data: {
-                  productCode: warehouseItem.code,
-                  productName: warehouseItem.name,
-                  category: warehouseItem.category,
-                  size: warehouseItem.size,
-                  color: warehouseItem.color,
+                  productCode: desiredItem.code,
+                  productName: desiredItem.name,
+                  category: desiredItem.category,
+                  size: desiredItem.size,
+                  color: desiredItem.color,
                   quantity: nextQuantity,
-                  costPrice: warehouseItem.costPrice,
-                  salePrice: warehouseItem.salePrice,
-                  unitPrice: warehouseItem.salePrice,
+                  costPrice: desiredItem.costPrice,
+                  salePrice: desiredItem.salePrice,
+                  unitPrice: desiredItem.salePrice,
                   subtotal: nextTotalAmount,
                 },
               },
@@ -207,6 +201,30 @@ export async function PATCH(
             },
           });
         }
+
+        await tx.product.upsert({
+          where: {
+            businessId_code: {
+              businessId: ownedBusiness.id,
+              code: desiredItem.code,
+            },
+          },
+          create: {
+            businessId: ownedBusiness.id,
+            code: desiredItem.code,
+            name: desiredItem.name,
+            category: desiredItem.category,
+            size: desiredItem.size,
+            color: desiredItem.color,
+          },
+          update: {
+            name: desiredItem.name,
+            category: desiredItem.category,
+            size: desiredItem.size,
+            color: desiredItem.color,
+            isActive: true,
+          },
+        });
 
         for (const customerId of new Set([existingPurchase.customerId, payload.customerId])) {
           await syncCustomerLedger(tx, ownedBusiness.id, customerId);
