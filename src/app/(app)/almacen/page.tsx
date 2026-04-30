@@ -45,8 +45,57 @@ type WarehouseResponse = {
   error?: string;
 };
 
+type PurchaseItemSummary = {
+  id: string;
+  warehouseItemId?: string | null;
+  code: string;
+  name: string;
+  category: "Sokso" | "Footloose" | "Leonisa";
+  size?: string | null;
+  color?: string | null;
+  quantity: number;
+  costPrice: number;
+  salePrice: number;
+};
+
+type PurchaseRow = {
+  id: string;
+  purchaseDate: string;
+  source: "DIRECT" | "WAREHOUSE_TRANSFER";
+  customerId: string;
+  customerName: string;
+  campaignId: string;
+  campaignName: string;
+  itemsCount: number;
+  totalAmount: number;
+  items: PurchaseItemSummary[];
+};
+
+type PurchaseResponse = {
+  data?: PurchaseRow[];
+  error?: string;
+};
+
+type WarehouseAssignmentRow = {
+  purchaseId: string;
+  warehouseItemId: string;
+  purchaseDate: string;
+  customerId: string;
+  customerName: string;
+  campaignId: string;
+  campaignName: string;
+  code: string;
+  name: string;
+  category: "Sokso" | "Footloose" | "Leonisa";
+  size?: string | null;
+  color?: string | null;
+  quantity: number;
+  totalAmount: number;
+};
+
 const CATEGORY_OPTIONS = ["Sokso", "Footloose", "Leonisa"] as const;
 const WAREHOUSE_ITEMS_PER_PAGE = 10;
+const ASSIGNMENTS_PER_PAGE = 10;
 const currencyFormatter = new Intl.NumberFormat("es-PE", {
   style: "currency",
   currency: "PEN",
@@ -75,12 +124,15 @@ export default function AlmacenPage() {
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [warehouseItems, setWarehouseItems] = useState<WarehouseItemRow[]>([]);
+  const [assignments, setAssignments] = useState<WarehouseAssignmentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [assigningItemId, setAssigningItemId] = useState<string | null>(null);
+  const [editingAssignmentPurchaseId, setEditingAssignmentPurchaseId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [assignmentPage, setAssignmentPage] = useState(1);
   const [query, setQuery] = useState("");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +156,7 @@ export default function AlmacenPage() {
   const [assignmentCustomerSearch, setAssignmentCustomerSearch] = useState("");
 
   const assigningItem = warehouseItems.find((item) => item.id === assigningItemId) ?? null;
+  const editingAssignment = assignments.find((assignment) => assignment.purchaseId === editingAssignmentPurchaseId) ?? null;
 
   const syncCustomerSelection = useCallback(
     (value: string) => {
@@ -131,6 +184,7 @@ export default function AlmacenPage() {
 
   function resetAssignForm() {
     setAssigningItemId(null);
+    setEditingAssignmentPurchaseId(null);
     setAssignmentDate(toDateInputValue(new Date()));
     setAssignmentQuantity("1");
     setAssignmentCustomerId("");
@@ -141,9 +195,10 @@ export default function AlmacenPage() {
     setError(null);
     setIsLoading(true);
 
-    const [warehouseRes, customersRes] = await Promise.all([
+    const [warehouseRes, customersRes, purchasesRes] = await Promise.all([
       fetch("/api/warehouse", { cache: "no-store" }),
       fetch("/api/customers?status=ACTIVE", { cache: "no-store" }),
+      fetch("/api/purchases", { cache: "no-store" }),
     ]);
 
     const warehouseJson = (await warehouseRes.json()) as WarehouseResponse;
@@ -151,19 +206,45 @@ export default function AlmacenPage() {
       data?: CustomerOption[];
       error?: string;
     };
+    const purchasesJson = (await purchasesRes.json()) as PurchaseResponse;
 
-    if (!warehouseRes.ok || !customersRes.ok) {
-      setError(warehouseJson.error ?? customersJson.error ?? "No se pudo cargar el almacén.");
+    if (!warehouseRes.ok || !customersRes.ok || !purchasesRes.ok) {
+      setError(warehouseJson.error ?? customersJson.error ?? purchasesJson.error ?? "No se pudo cargar el almacén.");
       setIsLoading(false);
       return;
     }
 
+    const warehouseTransfers = (purchasesJson.data ?? [])
+      .filter((purchase) => purchase.source === "WAREHOUSE_TRANSFER")
+      .flatMap((purchase) =>
+        purchase.items
+          .filter((item) => item.warehouseItemId)
+          .map((item) => ({
+            purchaseId: purchase.id,
+            warehouseItemId: item.warehouseItemId!,
+            purchaseDate: purchase.purchaseDate,
+            customerId: purchase.customerId,
+            customerName: purchase.customerName,
+            campaignId: purchase.campaignId,
+            campaignName: purchase.campaignName,
+            code: item.code,
+            name: item.name,
+            category: item.category,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity,
+            totalAmount: purchase.totalAmount,
+          })),
+      );
+
     setWarehouseItems(warehouseJson.data ?? []);
+    setAssignments(warehouseTransfers);
     setCampaignOptions(warehouseJson.campaignOptions ?? []);
     setCustomers(
       [...(customersJson.data ?? [])].sort((a, b) => a.fullName.localeCompare(b.fullName, "es", { sensitivity: "base" })),
     );
     setCurrentPage(1);
+    setAssignmentPage(1);
     setIsLoading(false);
   }, []);
 
@@ -247,25 +328,61 @@ export default function AlmacenPage() {
     setError(null);
     setSuccessMessage(null);
 
-    const response = await fetch(`/api/warehouse/${assigningItem.id}/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customerId: assignmentCustomerId,
-        quantity: parsedQuantity,
-        assignmentDate: toIsoDate(assignmentDate),
-      }),
-    });
+    if (editingAssignment) {
+      const response = await fetch(`/api/purchases/${editingAssignment.purchaseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: assignmentCustomerId,
+          campaignId: editingAssignment.campaignId,
+          purchaseDate: toIsoDate(assignmentDate),
+          items: [
+            {
+              code: editingAssignment.code,
+              name: editingAssignment.name,
+              category: editingAssignment.category,
+              size: editingAssignment.size || undefined,
+              color: editingAssignment.color || undefined,
+              quantity: parsedQuantity,
+              costPrice: assigningItem.costPrice,
+              salePrice: assigningItem.salePrice,
+            },
+          ],
+        }),
+      });
 
-    const json = (await response.json()) as { error?: string; data?: { customerName: string } };
-    setIsAssigning(false);
+      const json = (await response.json()) as { error?: string };
+      setIsAssigning(false);
 
-    if (!response.ok) {
-      setError(json.error ?? "No se pudo asignar el producto.");
-      return;
+      if (!response.ok) {
+        setError(json.error ?? "No se pudo actualizar la asignación.");
+        return;
+      }
+
+      const selectedCustomer = customers.find((customer) => customer.id === assignmentCustomerId);
+      setSuccessMessage(`Asignación actualizada para ${selectedCustomer?.fullName ?? "cliente"} correctamente.`);
+    } else {
+      const response = await fetch(`/api/warehouse/${assigningItem.id}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: assignmentCustomerId,
+          quantity: parsedQuantity,
+          assignmentDate: toIsoDate(assignmentDate),
+        }),
+      });
+
+      const json = (await response.json()) as { error?: string; data?: { customerName: string } };
+      setIsAssigning(false);
+
+      if (!response.ok) {
+        setError(json.error ?? "No se pudo asignar el producto.");
+        return;
+      }
+
+      setSuccessMessage(`Producto asignado a ${json.data?.customerName ?? "cliente"} correctamente.`);
     }
 
-    setSuccessMessage(`Producto asignado a ${json.data?.customerName ?? "cliente"} correctamente.`);
     resetAssignForm();
     await loadData();
   }
@@ -295,10 +412,32 @@ export default function AlmacenPage() {
     });
   }, [campaignFilter, query, warehouseItems]);
 
+  const filteredAssignments = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return assignments.filter((assignment) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        assignment.name.toLowerCase().includes(normalizedQuery) ||
+        assignment.code.toLowerCase().includes(normalizedQuery) ||
+        assignment.customerName.toLowerCase().includes(normalizedQuery) ||
+        assignment.campaignName.toLowerCase().includes(normalizedQuery);
+
+      const matchesCampaign = campaignFilter === "all" || assignment.campaignId === campaignFilter;
+
+      return matchesQuery && matchesCampaign;
+    });
+  }, [assignments, campaignFilter, query]);
+
   const totalPages = Math.max(1, Math.ceil(filteredWarehouseItems.length / WAREHOUSE_ITEMS_PER_PAGE));
   const paginatedItems = filteredWarehouseItems.slice(
     (currentPage - 1) * WAREHOUSE_ITEMS_PER_PAGE,
     currentPage * WAREHOUSE_ITEMS_PER_PAGE,
+  );
+  const assignmentTotalPages = Math.max(1, Math.ceil(filteredAssignments.length / ASSIGNMENTS_PER_PAGE));
+  const paginatedAssignments = filteredAssignments.slice(
+    (assignmentPage - 1) * ASSIGNMENTS_PER_PAGE,
+    assignmentPage * ASSIGNMENTS_PER_PAGE,
   );
 
   return (
@@ -390,7 +529,7 @@ export default function AlmacenPage() {
           <Panel delay={220}>
             {assigningItem ? (
               <>
-                <h2 className="text-lg font-semibold">Asignar a cliente</h2>
+                <h2 className="text-lg font-semibold">{editingAssignment ? "Editar asignación" : "Asignar a cliente"}</h2>
                 <div className="mt-3 rounded-2xl border bg-[var(--surface)] p-3 text-sm">
                   <p className="font-semibold">{assigningItem.name}</p>
                   <p className="mt-1 text-[var(--foreground-muted)]">{assigningItem.code} · {assigningItem.campaignName}</p>
@@ -425,10 +564,10 @@ export default function AlmacenPage() {
                   </div>
 
                   <button type="submit" disabled={isAssigning} className="h-10 w-full rounded-xl bg-[var(--accent)] text-sm font-semibold text-white disabled:opacity-60">
-                    {isAssigning ? "Asignando..." : "Asignar a cliente"}
+                    {isAssigning ? (editingAssignment ? "Guardando..." : "Asignando...") : editingAssignment ? "Guardar cambios" : "Asignar a cliente"}
                   </button>
                   <button type="button" onClick={resetAssignForm} className="h-10 w-full rounded-xl border text-sm font-semibold">
-                    Cancelar asignación
+                    {editingAssignment ? "Cancelar edición" : "Cancelar asignación"}
                   </button>
                 </form>
               </>
@@ -464,6 +603,7 @@ export default function AlmacenPage() {
             onChange={(event) => {
               setCampaignFilter(event.target.value);
               setCurrentPage(1);
+              setAssignmentPage(1);
             }}
           >
             <option value="all">Todas las campañas</option>
@@ -535,6 +675,71 @@ export default function AlmacenPage() {
               totalPages={totalPages}
               onPrevious={() => setCurrentPage((page) => Math.max(1, page - 1))}
               onNext={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            />
+          </div>
+        )}
+      </Panel>
+
+      <Panel delay={340}>
+        <h2 className="text-lg font-semibold">Asignaciones realizadas</h2>
+        {isLoading ? (
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">Cargando asignaciones...</p>
+        ) : filteredAssignments.length === 0 ? (
+          <p className="mt-3 text-sm text-[var(--foreground-muted)]">No hay asignaciones registradas para este filtro.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-xs uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
+                <tr>
+                  <th className="pb-2 font-semibold">Fecha</th>
+                  <th className="pb-2 font-semibold">Cliente</th>
+                  <th className="pb-2 font-semibold">Campaña</th>
+                  <th className="pb-2 font-semibold">Producto</th>
+                  <th className="pb-2 font-semibold">Cantidad</th>
+                  <th className="pb-2 font-semibold">Total</th>
+                  <th className="pb-2 font-semibold">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedAssignments.map((assignment) => (
+                  <tr key={assignment.purchaseId} className="border-t border-[var(--border)]/80">
+                    <td className="py-3 text-[var(--foreground-muted)]">{new Date(assignment.purchaseDate).toLocaleDateString("es-PE")}</td>
+                    <td className="py-3">{assignment.customerName}</td>
+                    <td className="py-3">{assignment.campaignName}</td>
+                    <td className="py-3">
+                      <p className="font-medium">{assignment.name}</p>
+                      <p className="text-xs text-[var(--foreground-muted)]">{assignment.category} · {assignment.code}{assignment.size ? ` · Talla ${assignment.size}` : ""}{assignment.color ? ` · ${assignment.color}` : ""}</p>
+                    </td>
+                    <td className="py-3">{assignment.quantity}</td>
+                    <td className="py-3">{currencyFormatter.format(assignment.totalAmount)}</td>
+                    <td className="py-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssigningItemId(assignment.warehouseItemId);
+                          setEditingAssignmentPurchaseId(assignment.purchaseId);
+                          setAssignmentQuantity(String(assignment.quantity));
+                          setAssignmentDate(toDateInputValue(assignment.purchaseDate));
+                          setAssignmentCustomerId(assignment.customerId);
+                          setAssignmentCustomerSearch(assignment.customerName);
+                          setShowCreateForm(false);
+                          setError(null);
+                          setSuccessMessage(null);
+                        }}
+                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                      >
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <PaginationControls
+              currentPage={assignmentPage}
+              totalPages={assignmentTotalPages}
+              onPrevious={() => setAssignmentPage((page) => Math.max(1, page - 1))}
+              onNext={() => setAssignmentPage((page) => Math.min(assignmentTotalPages, page + 1))}
             />
           </div>
         )}

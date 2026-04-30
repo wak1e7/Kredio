@@ -64,6 +64,13 @@ export async function PATCH(
           campaignId: true,
           purchaseDate: true,
           source: true,
+          items: {
+            select: {
+              id: true,
+              warehouseItemId: true,
+              quantity: true,
+            },
+          },
         },
       }),
       prisma.customer.findFirst({
@@ -86,19 +93,129 @@ export async function PATCH(
       return NextResponse.json({ error: "Compra no encontrada." }, { status: 404 });
     }
 
-    if (existingPurchase.source === "WAREHOUSE_TRANSFER") {
-      return NextResponse.json(
-        { error: "Las compras asignadas desde almacén deben ajustarse desde el módulo de almacén." },
-        { status: 400 },
-      );
-    }
-
     if (!customer) {
       return NextResponse.json({ error: "Cliente no encontrado para este negocio." }, { status: 404 });
     }
 
     if (!campaign) {
       return NextResponse.json({ error: "Campaña no encontrada para este negocio." }, { status: 404 });
+    }
+
+    if (existingPurchase.source === "WAREHOUSE_TRANSFER") {
+      const transferItem = existingPurchase.items[0];
+
+      if (!transferItem?.warehouseItemId || existingPurchase.items.length !== 1) {
+        return NextResponse.json(
+          { error: "La compra asignada desde almacén no tiene una estructura editable compatible." },
+          { status: 400 },
+        );
+      }
+
+      if (payload.campaignId !== existingPurchase.campaignId) {
+        return NextResponse.json(
+          { error: "Las compras de almacén deben mantenerse en la campaña original del producto." },
+          { status: 400 },
+        );
+      }
+
+      const desiredItem = payload.items[0];
+      if (!desiredItem) {
+        return NextResponse.json({ error: "Debes mantener un producto en la compra." }, { status: 400 });
+      }
+
+      const warehouseItem = await prisma.warehouseItem.findFirst({
+        where: {
+          id: transferItem.warehouseItemId,
+          businessId: ownedBusiness.id,
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          category: true,
+          size: true,
+          color: true,
+          availableQuantity: true,
+          costPrice: true,
+          salePrice: true,
+        },
+      });
+
+      if (!warehouseItem) {
+        return NextResponse.json({ error: "El producto original de almacén ya no existe." }, { status: 404 });
+      }
+
+      const nextQuantity = desiredItem.quantity;
+      const stockDelta = nextQuantity - transferItem.quantity;
+
+      if (stockDelta > warehouseItem.availableQuantity) {
+        return NextResponse.json(
+          { error: "La cantidad solicitada supera el stock disponible en almacén." },
+          { status: 400 },
+        );
+      }
+
+      const nextTotalAmount = Number(
+        (nextQuantity * Number(warehouseItem.salePrice.toString())).toFixed(2),
+      );
+
+      const result = await prisma.$transaction(async (tx) => {
+        const purchase = await tx.purchase.update({
+          where: {
+            id: existingPurchase.id,
+          },
+          data: {
+            customerId: payload.customerId,
+            purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : existingPurchase.purchaseDate,
+            notes: payload.notes?.trim() || null,
+            totalAmount: nextTotalAmount,
+            items: {
+              update: {
+                where: {
+                  id: transferItem.id,
+                },
+                data: {
+                  productCode: warehouseItem.code,
+                  productName: warehouseItem.name,
+                  category: warehouseItem.category,
+                  size: warehouseItem.size,
+                  color: warehouseItem.color,
+                  quantity: nextQuantity,
+                  costPrice: warehouseItem.costPrice,
+                  salePrice: warehouseItem.salePrice,
+                  unitPrice: warehouseItem.salePrice,
+                  subtotal: nextTotalAmount,
+                },
+              },
+            },
+          },
+          include: {
+            items: true,
+          },
+        });
+
+        if (stockDelta !== 0) {
+          await tx.warehouseItem.update({
+            where: {
+              id: warehouseItem.id,
+            },
+            data: {
+              availableQuantity:
+                stockDelta > 0
+                  ? { decrement: stockDelta }
+                  : { increment: Math.abs(stockDelta) },
+            },
+          });
+        }
+
+        for (const customerId of new Set([existingPurchase.customerId, payload.customerId])) {
+          await syncCustomerLedger(tx, ownedBusiness.id, customerId);
+        }
+
+        return purchase;
+      });
+
+      return NextResponse.json({ data: result });
     }
 
     const totals = calculatePurchaseTotals(payload.items);

@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
         items: {
           select: {
             id: true,
+            warehouseItemId: true,
             productCode: true,
             productName: true,
             category: true,
@@ -108,6 +109,7 @@ export async function GET(request: NextRequest) {
       totalAmount: Number(purchase.totalAmount.toString()),
       items: purchase.items.map((item) => ({
         id: item.id,
+        warehouseItemId: item.warehouseItemId,
         code: item.productCode,
         name: item.productName,
         category: item.category,

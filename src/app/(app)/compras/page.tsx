@@ -75,6 +75,7 @@ export default function ComprasPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null);
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [editingPurchaseSource, setEditingPurchaseSource] = useState<"DIRECT" | "WAREHOUSE_TRANSFER" | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +108,7 @@ export default function ComprasPage() {
 
   function resetProductForm() {
     setEditingPurchaseId(null);
+    setEditingPurchaseSource(null);
     setCustomerId("");
     setCustomerSearch("");
     setPurchaseDate(new Date().toISOString().slice(0, 10));
@@ -258,11 +260,6 @@ export default function ComprasPage() {
   );
 
   function onEditPurchase(purchase: PurchaseRow) {
-    if (purchase.source === "WAREHOUSE_TRANSFER") {
-      setError("Las compras asignadas desde almacén se editan desde el módulo de almacén.");
-      return;
-    }
-
     if (purchase.items.length !== 1) {
       setError("Por ahora solo se pueden editar compras con un solo producto registrado.");
       return;
@@ -276,6 +273,7 @@ export default function ComprasPage() {
     }
 
     setEditingPurchaseId(purchase.id);
+    setEditingPurchaseSource(purchase.source);
     setCustomerId(purchase.customerId);
     setCustomerSearch(purchase.customerName);
     setCampaignId(purchase.campaignId);
@@ -381,6 +379,7 @@ export default function ComprasPage() {
                   className="mt-2 h-10 w-full rounded-xl border bg-[var(--surface)] px-3 text-sm"
                   value={campaignId}
                   onChange={(event) => setCampaignId(event.target.value)}
+                  disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"}
                 >
                   <option value="">Seleccionar campaña</option>
                   {campaigns.map((campaign) => (
@@ -411,6 +410,7 @@ export default function ComprasPage() {
                     className="h-10 rounded-xl border bg-[var(--surface)] px-3 text-sm"
                     value={category}
                     onChange={(event) => setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])}
+                    disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"}
                   >
                     {CATEGORY_OPTIONS.map((option) => (
                       <option key={option} value={option}>
@@ -418,13 +418,13 @@ export default function ComprasPage() {
                       </option>
                     ))}
                   </select>
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Código" value={code} onChange={(event) => setCode(event.target.value)} required />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Talla" value={size} onChange={(event) => setSize(event.target.value)} />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Color" value={color} onChange={(event) => setColor(event.target.value)} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Código" value={code} onChange={(event) => setCode(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Talla" value={size} onChange={(event) => setSize(event.target.value)} disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Color" value={color} onChange={(event) => setColor(event.target.value)} disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
                   <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Cantidad" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de costo" value={costPrice} onChange={(event) => setCostPrice(event.target.value)} required />
-                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de venta" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} required />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de costo" value={costPrice} onChange={(event) => setCostPrice(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
+                  <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Precio de venta" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} required disabled={editingPurchaseSource === "WAREHOUSE_TRANSFER"} />
                 </div>
               </div>
 
@@ -453,6 +453,11 @@ export default function ComprasPage() {
               <li className="rounded-xl border bg-[var(--surface)] p-3">Se registra la compra con su detalle de productos.</li>
               <li className="rounded-xl border bg-[var(--surface)] p-3">Se incrementa la deuda de la campaña seleccionada.</li>
               <li className="rounded-xl border bg-[var(--surface)] p-3">Se actualiza la deuda total del cliente.</li>
+              {editingPurchaseSource === "WAREHOUSE_TRANSFER" ? (
+                <li className="rounded-xl border bg-[var(--surface)] p-3">
+                  La compra viene desde almacén: aquí puedes ajustar cliente, fecha y cantidad sin perder consistencia de stock.
+                </li>
+              ) : null}
             </ul>
             {successMessage ? <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</p> : null}
           </Panel>
@@ -525,13 +530,11 @@ export default function ComprasPage() {
                         <button
                           type="button"
                           onClick={() => onEditPurchase(purchase)}
-                          disabled={purchase.source === "WAREHOUSE_TRANSFER" || purchase.items.length !== 1}
+                          disabled={purchase.items.length !== 1}
                           title={
-                            purchase.source === "WAREHOUSE_TRANSFER"
-                              ? "Esta compra fue asignada desde almacén."
-                              : purchase.items.length !== 1
-                                ? "La edición con varios productos aún no está disponible."
-                                : undefined
+                            purchase.items.length !== 1
+                              ? "La edición con varios productos aún no está disponible."
+                              : undefined
                           }
                           className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                         >
